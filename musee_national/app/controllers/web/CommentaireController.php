@@ -4,6 +4,7 @@ namespace App\Controllers\Web;
 use App\Core\Controller;
 use App\Models\CommentaireModel;
 use App\Models\OeuvreModel;
+use App\Middlewares\SessionMiddleware;
 
 class CommentaireController extends Controller {
     
@@ -11,6 +12,7 @@ class CommentaireController extends Controller {
     private $oeuvreModel;
 
     public function __construct() {
+        SessionMiddleware::check();
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('auth/login');
             return;

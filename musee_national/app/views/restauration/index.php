@@ -142,6 +142,9 @@
                                 <a href="<?= BASE_URL ?>admin/restauration/edit/<?= $restauration->id ?>" class="btn-icon edit" title="Modifier">
                                     <i class="fas fa-edit"></i>
                                 </a>
+                                <a href="<?= BASE_URL ?>admin/audit?table=restauration&record_id=<?= $restauration->id ?>" class="btn-icon edit" title="Modifier">
+                                    <i class="fas fa-history"></i>
+                                </a>
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
                                     <form method="post" action="<?= BASE_URL ?>admin/restauration/delete/<?= $restauration->id ?>" style="display:inline;">
                                         <button type="submit" class="btn-icon delete" onclick="return confirm('Supprimer cette restauration ?')" title="Supprimer">

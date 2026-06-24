@@ -114,6 +114,11 @@
                                 <a href="<?= BASE_URL ?>admin/exposition/edit/<?= $exposition->id ?>" class="btn-icon edit" title="Modifier">
                                     <i class="fas fa-edit"></i>
                                 </a>
+                                 <!-- ========== BOUTON AUDIT ========== -->
+                                <a href="<?= BASE_URL ?>admin/audit?table=exposition&record_id=<?= $exposition->id ?>" class="btn-icon" title="Voir l'historique" style="color: #6c757d;">
+                                    <i class="fas fa-history"></i>
+                                </a>
+                                <!-- ================================== -->
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
                                     <form method="post" action="<?= BASE_URL ?>admin/exposition/delete/<?= $exposition->id ?>" style="display:inline;">
                                         <button type="submit" class="btn-icon delete" onclick="return confirm('Supprimer cette exposition ?')" title="Supprimer">

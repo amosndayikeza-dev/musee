@@ -49,7 +49,7 @@
         <div class="kpi-label">Restaurations en cours</div>
     </div>
     <div class="kpi-card" style="border-top-color: #00BCD4;">
-        <div class="kpi-value"><?= number_format($stats['cout_restaurations'], 2) ?> €</div>
+        <div class="kpi-value"><?= number_format($stats['cout_restaurations'], 2) ?> fbu</div>
         <div class="kpi-label">Coût total restaurations</div>
     </div>
     <div class="kpi-card" style="border-top-color: #8BC34A;">
@@ -59,33 +59,33 @@
 </div>
 
 <!-- ===== GRAPHIQUES ===== -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 30px 0;">
+<div class="chart-grid">
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-chart-pie"></i> Répartition par statut</h3>
         </div>
-        <canvas id="chartStatut" style="max-height: 300px;"></canvas>
+        <canvas id="chartStatut"></canvas>
     </div>
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-chart-bar"></i> Œuvres par catégorie</h3>
         </div>
-        <canvas id="chartCategorie" style="max-height: 300px;"></canvas>
+        <canvas id="chartCategorie"></canvas>
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 30px 0;">
+<div class="chart-grid">
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-trophy"></i> Top 5 auteurs</h3>
         </div>
-        <canvas id="chartAuteurs" style="max-height: 300px;"></canvas>
+        <canvas id="chartAuteurs"></canvas>
     </div>
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-exchange-alt"></i> Mouvements</h3>
         </div>
-        <canvas id="chartMouvements" style="max-height: 300px;"></canvas>
+        <canvas id="chartMouvements"></canvas>
     </div>
 </div>
 

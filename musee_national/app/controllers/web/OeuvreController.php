@@ -9,6 +9,7 @@ use App\Middlewares\AuthMiddleware;
 use App\Services\AuditService;
 use App\Services\ExcelExportService;
 use App\Services\PdfService;
+use App\Middlewares\SessionMiddleware;
 
 class OeuvreController extends Controller {
     
@@ -17,12 +18,11 @@ class OeuvreController extends Controller {
     private $categorieModel;
 
     public function __construct() {
-        // Vérifier que l'utilisateur est connecté
+        SessionMiddleware::check();
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('auth/login');
             exit;
         }
-        // Admin ou conservateur peuvent gérer les œuvres
         AuthMiddleware::requireAdminOrConservateur();
         
         $this->oeuvreModel = new OeuvreModel();
@@ -87,7 +87,7 @@ class OeuvreController extends Controller {
      */
     public function storeAction() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('oeuvre/create');
+            $this->redirect('admin/oeuvre/create');
             return;
         }
 
@@ -127,7 +127,7 @@ class OeuvreController extends Controller {
             }
         }
 
-        // 1. Insérer l'œuvre
+        // 1. Insérer
         $id = $this->oeuvreModel->insert($data);
 
         // 2. Audit
@@ -145,7 +145,7 @@ class OeuvreController extends Controller {
     public function editAction($id) {
         $oeuvre = $this->oeuvreModel->getByIdWithDetails($id);
         if (!$oeuvre) {
-            $this->redirect('oeuvre/index');
+            $this->redirect('admin/oeuvre/index');
             return;
         }
         $auteurs = $this->auteurModel->getAll();
@@ -163,14 +163,14 @@ class OeuvreController extends Controller {
      */
     public function updateAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('oeuvre/edit/' . $id);
+            $this->redirect('admin/oeuvre/edit/' . $id);
             return;
         }
 
         // Récupérer les anciennes valeurs pour l'audit
         $old = $this->oeuvreModel->getById($id);
         if (!$old) {
-            $this->redirect('oeuvre/index');
+            $this->redirect('admin/oeuvre/index');
             return;
         }
 
@@ -187,7 +187,7 @@ class OeuvreController extends Controller {
 
         if (empty($data['titre'])) {
             $_SESSION['error'] = 'Le titre est obligatoire';
-            $this->redirect('oeuvre/edit/' . $id);
+            $this->redirect('admin/oeuvre/edit/' . $id);
             return;
         }
 
@@ -205,7 +205,7 @@ class OeuvreController extends Controller {
             }
         }
 
-        // 1. Mettre à jour
+        // 1. Mise à jour
         $this->oeuvreModel->update($id, $data);
 
         // 2. Audit
@@ -214,26 +214,26 @@ class OeuvreController extends Controller {
 
         // 3. Redirection
         $_SESSION['success'] = 'Œuvre modifiée avec succès !';
-        $this->redirect('oeuvre/index');
+        $this->redirect('admin/oeuvre/index');
     }
 
     /**
-     * Supprimer une œuvre (Admin uniquement)
+     * Supprimer une œuvre (soft delete)
      */
     public function deleteAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('oeuvre/index');
+            $this->redirect('admin/oeuvre/index');
             return;
         }
 
         // Récupérer les anciennes valeurs pour l'audit
         $old = $this->oeuvreModel->getById($id);
         if (!$old) {
-            $this->redirect('oeuvre/index');
+            $this->redirect('admin/oeuvre/index');
             return;
         }
 
-        // 1. Supprimer
+        // 1. Soft delete
         $this->oeuvreModel->delete($id);
 
         // 2. Audit
@@ -242,7 +242,7 @@ class OeuvreController extends Controller {
 
         // 3. Redirection
         $_SESSION['success'] = 'Œuvre supprimée avec succès !';
-        $this->redirect('oeuvre/index');
+        $this->redirect('admin/oeuvre/index');
     }
 
     /**
@@ -251,7 +251,7 @@ class OeuvreController extends Controller {
     public function showAction($id) {
         $oeuvre = $this->oeuvreModel->getByIdWithDetails($id);
         if (!$oeuvre) {
-            $this->redirect('oeuvre/index');
+            $this->redirect('admin/oeuvre/index');
             return;
         }
         $this->render('show', [
@@ -284,63 +284,88 @@ class OeuvreController extends Controller {
      * Export PDF
      */
     public function exportPdfAction() {
-        $oeuvres = $this->oeuvreModel->getWithAuteurAndCategorie();
-        
-        $html = '<h1 style="text-align:center;">Liste des œuvres</h1>';
-        $html .= '<table border="1" cellpadding="5" style="width:100%; border-collapse:collapse;">';
-        $html .= '<thead><tr><th>ID</th><th>Titre</th><th>Auteur</th><th>Catégorie</th><th>Statut</th></tr></thead>';
-        $html .= '<tbody>';
-        foreach ($oeuvres as $oeuvre) {
-            $html .= '<tr>';
-            $html .= '<td>' . $oeuvre->id . '</td>';
-            $html .= '<td>' . htmlspecialchars($oeuvre->titre) . '</td>';
-            $html .= '<td>' . htmlspecialchars($oeuvre->auteur_nom ?? 'Non défini') . '</td>';
-            $html .= '<td>' . htmlspecialchars($oeuvre->categorie_nom ?? 'Non défini') . '</td>';
-            $html .= '<td>' . $oeuvre->statut . '</td>';
-            $html .= '</tr>';
-        }
-        $html .= '</tbody></table>';
-        $html .= '<p>Généré le ' . date('d/m/Y H:i') . '</p>';
+    // Récupérer les filtres depuis l'URL
+    $filters = [
+        'keyword' => $_GET['keyword'] ?? '',
+        'auteur_id' => $_GET['auteur_id'] ?? '',
+        'categorie_id' => $_GET['categorie_id'] ?? '',
+        'statut' => $_GET['statut'] ?? '',
+        'date_debut' => $_GET['date_debut'] ?? '',
+        'date_fin' => $_GET['date_fin'] ?? ''
+    ];
 
-        $pdfService = new PdfService();
-        $pdfService->download($html, 'oeuvres_' . date('Y-m-d') . '.pdf');
+    // Récupérer les données filtrées
+    $oeuvres = $this->oeuvreModel->getWithFilters($filters);
+
+    // Générer le HTML pour le PDF
+    $html = '<h1 style="text-align:center;">Liste des œuvres (recherche)</h1>';
+    $html .= '<p style="text-align:center; color:#888;">Généré le ' . date('d/m/Y H:i') . '</p>';
+    if (!empty($filters['keyword'])) {
+        $html .= '<p style="text-align:center;">Recherche : "' . htmlspecialchars($filters['keyword']) . '"</p>';
     }
+    $html .= '<hr>';
+    $html .= '<table border="1" cellpadding="5" style="width:100%; border-collapse:collapse;">';
+    $html .= '<thead><tr><th>ID</th><th>Titre</th><th>Auteur</th><th>Catégorie</th><th>Statut</th></tr></thead>';
+    $html .= '<tbody>';
+    foreach ($oeuvres as $oeuvre) {
+        $html .= '<tr>';
+        $html .= '<td>' . $oeuvre->id . '</td>';
+        $html .= '<td>' . htmlspecialchars($oeuvre->titre) . '</td>';
+        $html .= '<td>' . htmlspecialchars($oeuvre->auteur_nom ?? 'Non défini') . '</td>';
+        $html .= '<td>' . htmlspecialchars($oeuvre->categorie_nom ?? 'Non défini') . '</td>';
+        $html .= '<td>' . $oeuvre->statut . '</td>';
+        $html .= '</tr>';
+    }
+    $html .= '</tbody></table>';
+
+    $pdfService = new PdfService();
+    $pdfService->download($html, 'oeuvres_' . date('Y-m-d') . '.pdf');
+}
 
     /**
      * Export Excel
      */
     public function exportExcelAction() {
-        $oeuvres = $this->oeuvreModel->getWithAuteurAndCategorie();
-        
-        $headers = ['ID', 'Titre', 'Auteur', 'Catégorie', 'Statut', 'Date création'];
-        $data = [];
-        foreach ($oeuvres as $oeuvre) {
-            $data[] = [
-                $oeuvre->id,
-                $oeuvre->titre,
-                $oeuvre->auteur_nom ?? 'Non défini',
-                $oeuvre->categorie_nom ?? 'Non défini',
-                $oeuvre->statut,
-                $oeuvre->date_creation ?? ''
-            ];
-        }
-        
-        $excel = new ExcelExportService();
-        $excel->export($data, $headers, 'oeuvres_' . date('Y-m-d'), 'Liste des œuvres');
+    $filters = [
+        'keyword' => $_GET['keyword'] ?? '',
+        'auteur_id' => $_GET['auteur_id'] ?? '',
+        'categorie_id' => $_GET['categorie_id'] ?? '',
+        'statut' => $_GET['statut'] ?? '',
+        'date_debut' => $_GET['date_debut'] ?? '',
+        'date_fin' => $_GET['date_fin'] ?? ''
+    ];
+
+    $oeuvres = $this->oeuvreModel->getWithFilters($filters);
+
+    $headers = ['ID', 'Titre', 'Auteur', 'Catégorie', 'Statut', 'Date création'];
+    $data = [];
+    foreach ($oeuvres as $oeuvre) {
+        $data[] = [
+            $oeuvre->id,
+            $oeuvre->titre,
+            $oeuvre->auteur_nom ?? 'Non défini',
+            $oeuvre->categorie_nom ?? 'Non défini',
+            $oeuvre->statut,
+            $oeuvre->date_creation ?? ''
+        ];
     }
 
+    $excel = new ExcelExportService();
+    $excel->export($data, $headers, 'oeuvres_' . date('Y-m-d'), 'Liste des œuvres');
+}
+
     /**
-     * Archiver une œuvre (Admin uniquement)
+     * Archiver une œuvre
      */
     public function archiveAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('oeuvre/index');
+            $this->redirect('admin/oeuvre/index');
             return;
         }
         
         $old = $this->oeuvreModel->getById($id);
         if (!$old) {
-            $this->redirect('oeuvre/index');
+            $this->redirect('admin/oeuvre/index');
             return;
         }
         
@@ -350,21 +375,21 @@ class OeuvreController extends Controller {
         $audit->log('ARCHIVE', 'oeuvre', $id, (array)$old, ['archive' => 1]);
         
         $_SESSION['success'] = 'Œuvre archivée avec succès !';
-        $this->redirect('oeuvre/index');
+        $this->redirect('admin/oeuvre/index');
     }
 
     /**
-     * Restaurer une œuvre archivée (Admin uniquement)
+     * Restaurer une œuvre archivée
      */
     public function unarchiveAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('oeuvre/index');
+            $this->redirect('admin/oeuvre/index');
             return;
         }
         
         $old = $this->oeuvreModel->getById($id);
         if (!$old) {
-            $this->redirect('oeuvre/index');
+            $this->redirect('admin/oeuvre/index');
             return;
         }
         
@@ -374,6 +399,6 @@ class OeuvreController extends Controller {
         $audit->log('UNARCHIVE', 'oeuvre', $id, (array)$old, ['archive' => 0]);
         
         $_SESSION['success'] = 'Œuvre restaurée avec succès !';
-        $this->redirect('oeuvre/index');
+        $this->redirect('admin/oeuvre/index');
     }
 }

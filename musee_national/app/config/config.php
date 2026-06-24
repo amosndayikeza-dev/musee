@@ -7,7 +7,10 @@ define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
 
 // URL de base - CORRIGÉ pour le nouveau chemin
-define('BASE_URL', 'http://localhost/musee/musee_national/');
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+$host = $_SERVER['HTTP_HOST']; // par exemple 'localhost' ou '192.168.137.1'
+$base = $protocol . '://' . $host . '/musee/musee_national/';
+define('BASE_URL', $base);
 
 // Dossier d'upload - CORRIGÉ
 define('UPLOAD_DIR', dirname(__DIR__, 2) . '/public/uploads/');

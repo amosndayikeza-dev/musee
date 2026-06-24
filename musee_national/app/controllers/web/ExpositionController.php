@@ -8,12 +8,14 @@ use App\Services\PdfExportService;
 use App\Services\AuditService;
 use App\Middlewares\AuthMiddleware;
 use App\Services\ExcelExportService;
+use App\Middlewares\SessionMiddleware;
 
 class ExpositionController extends Controller {
     private $expositionModel;
     private $oeuvreModel;
 
     public function __construct() {
+        SessionMiddleware::check();
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('auth/login');
             exit;
@@ -103,21 +105,31 @@ class ExpositionController extends Controller {
             return;
         }
 
-        // 1. Insertion
+        // Gestion de l'upload de photo
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = UPLOAD_DIR . 'expositions/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            $extension = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
+            $filename = uniqid() . '.' . $extension;
+            $destination = $uploadDir . $filename;
+            if (move_uploaded_file($_FILES['photo']['tmp_name'], $destination)) {
+                $data['photo'] = 'uploads/expositions/' . $filename;
+            }
+        }
+
         $id = $this->expositionModel->insert($data);
         
-        // 2. Ajouter les œuvres sélectionnées
         if (isset($_POST['oeuvres']) && is_array($_POST['oeuvres'])) {
             foreach ($_POST['oeuvres'] as $oeuvreId) {
                 $this->expositionModel->addOeuvre($id, $oeuvreId, date('Y-m-d'));
             }
         }
 
-        // 3. Audit
         $audit = new AuditService();
         $audit->log('INSERT', 'exposition', $id, null, $data);
 
-        // 4. Redirection
         $_SESSION['success'] = "L'exposition a été ajoutée avec succès !";
         $this->redirect('admin/exposition/index');
     }
@@ -181,10 +193,22 @@ class ExpositionController extends Controller {
             return;
         }
 
-        // 1. Mise à jour
+        // Gestion de l'upload de photo
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = UPLOAD_DIR . 'expositions/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            $extension = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
+            $filename = uniqid() . '.' . $extension;
+            $destination = $uploadDir . $filename;
+            if (move_uploaded_file($_FILES['photo']['tmp_name'], $destination)) {
+                $data['photo'] = 'uploads/expositions/' . $filename;
+            }
+        }
+
         $this->expositionModel->update($id, $data);
         
-        // 2. Mettre à jour les œuvres associées
         $this->expositionModel->removeAllOeuvres($id);
         if (isset($_POST['oeuvres']) && is_array($_POST['oeuvres'])) {
             foreach ($_POST['oeuvres'] as $oeuvreId) {
@@ -192,17 +216,15 @@ class ExpositionController extends Controller {
             }
         }
 
-        // 3. Audit
         $audit = new AuditService();
         $audit->log('UPDATE', 'exposition', $id, (array)$old, $data);
 
-        // 4. Redirection
         $_SESSION['success'] = "L'exposition a été modifiée avec succès !";
         $this->redirect('admin/exposition/index');
     }
 
     /**
-     * Supprimer une exposition (Admin uniquement)
+     * Supprimer une exposition (soft delete)
      */
     public function deleteAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -216,14 +238,12 @@ class ExpositionController extends Controller {
             return;
         }
 
-        // 1. Supprimer
+        // Soft delete
         $this->expositionModel->delete($id);
 
-        // 2. Audit
         $audit = new AuditService();
         $audit->log('DELETE', 'exposition', $id, (array)$old, null);
 
-        // 3. Redirection
         $_SESSION['success'] = "L'exposition a été supprimée avec succès !";
         $this->redirect('admin/exposition/index');
     }
@@ -295,25 +315,26 @@ class ExpositionController extends Controller {
         $pdfService->generateFromHtml($html, 'liste_expositions', 'landscape');
     }
 
-
-
-public function exportExcelAction() {
-    $expositions = $this->expositionModel->getAll();
-    
-    $headers = ['ID', 'Titre', 'Lieu', 'Date début', 'Date fin', 'Statut'];
-    $data = [];
-    foreach ($expositions as $exposition) {
-        $data[] = [
-            $exposition->id,
-            $exposition->titre,
-            $exposition->lieu ?? '',
-            date('d/m/Y', strtotime($exposition->date_debut)),
-            date('d/m/Y', strtotime($exposition->date_fin)),
-            $exposition->statut
-        ];
+    /**
+     * Export Excel
+     */
+    public function exportExcelAction() {
+        $expositions = $this->expositionModel->getAll();
+        
+        $headers = ['ID', 'Titre', 'Lieu', 'Date début', 'Date fin', 'Statut'];
+        $data = [];
+        foreach ($expositions as $exposition) {
+            $data[] = [
+                $exposition->id,
+                $exposition->titre,
+                $exposition->lieu ?? '',
+                date('d/m/Y', strtotime($exposition->date_debut)),
+                date('d/m/Y', strtotime($exposition->date_fin)),
+                $exposition->statut
+            ];
+        }
+        
+        $excel = new ExcelExportService();
+        $excel->export($data, $headers, 'expositions_' . date('Y-m-d'), 'Liste des expositions');
     }
-    
-    $excel = new ExcelExportService();
-    $excel->export($data, $headers, 'expositions_' . date('Y-m-d'), 'Liste des expositions');
-}
 }

@@ -9,7 +9,8 @@
         </div>
     <?php endif; ?>
 
-    <form method="post" action="<?= BASE_URL ?>admin/auteur/store">
+    <!-- AJOUT DE enctype="multipart/form-data" -->
+    <form method="post" action="<?= BASE_URL ?>admin/auteur/store" enctype="multipart/form-data">
         <div class="form-row">
             <div class="form-group">
                 <label>Nom <span class="required">*</span></label>
@@ -40,6 +41,18 @@
         <div class="form-group form-row-full">
             <label>Nationalité</label>
             <input type="text" name="nationalite" class="form-control" value="<?= htmlspecialchars($old['nationalite'] ?? '') ?>" placeholder="Ex: Française, Italienne, ...">
+        </div>
+
+        <!-- CORRECTION : label "Photo de l'auteur" au lieu de "Photo de l'exposition" -->
+        <div class="form-group form-row-full">
+            <label>Photo de l'auteur</label>
+            <?php if (isset($old['photo']) && !empty($old['photo'])): ?>
+                <div style="margin-bottom:10px;">
+                    <img src="<?= BASE_URL . $old['photo'] ?>" style="max-width:200px; border-radius:8px;">
+                </div>
+            <?php endif; ?>
+            <input type="file" name="photo" class="form-control" accept="image/*">
+            <small style="color:#888;">Formats : JPG, PNG, GIF, WEBP (max 2 Mo)</small>
         </div>
 
         <div class="form-row" style="margin-top: 20px;">

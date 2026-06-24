@@ -35,9 +35,17 @@
         <?php else: ?>
             <?php foreach ($expositions as $exposition): ?>
                 <div class="card">
+                    <!-- ====== ZONE DE LA PHOTO (MISE À JOUR) ====== -->
                     <div class="card-image">
-                        <i class="fas fa-calendar-alt" style="font-size: 40px;"></i>
+                        <?php if (!empty($exposition->photo)): ?>
+                            <img src="<?= BASE_URL . $exposition->photo ?>" 
+                                 alt="<?= htmlspecialchars($exposition->titre) ?>" 
+                                 style="width:100%; height:100%; object-fit:cover;">
+                        <?php else: ?>
+                            <i class="fas fa-calendar-alt" style="font-size: 40px;"></i>
+                        <?php endif; ?>
                     </div>
+                    <!-- ============================================ -->
                     <div class="card-body">
                         <h3><a href="<?= BASE_URL ?>public/exposition/show/<?= $exposition->id ?>">
                             <?= htmlspecialchars($exposition->titre) ?>

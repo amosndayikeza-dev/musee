@@ -78,9 +78,12 @@
                                 <a href="<?= BASE_URL ?>utilisateur/show/<?= $user->id ?>" class="btn-icon view" title="Voir">
                                     <i class="fas fa-eye"></i>
                                 </a>
+                                 <a href="<?= BASE_URL ?>admin/audit?table=utilisateur&record_id=<?= $user->id ?>" class="btn-icon edit" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
                                 <?php if ($user->id != $_SESSION['user_id']): ?>
                                     <a href="<?= BASE_URL ?>utilisateur/edit/<?= $user->id ?>" class="btn-icon edit" title="Modifier">
-                                        <i class="fas fa-edit"></i>
+                                        <i class="fas fa-history"></i>
                                     </a>
                                     <form method="post" action="<?= BASE_URL ?>utilisateur/delete/<?= $user->id ?>" style="display:inline;">
                                         <button type="submit" class="btn-icon delete" onclick="return confirm('Supprimer cet utilisateur ?')" title="Supprimer">

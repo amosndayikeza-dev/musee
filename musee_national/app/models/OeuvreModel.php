@@ -2,8 +2,11 @@
 namespace App\Models;
 
 use App\Core\Model;
+use App\Core\SoftDeleteTrait;
+
 
 class OeuvreModel extends Model {
+    use SoftDeleteTrait;
     protected $table = 'oeuvre';
 
     /**
@@ -280,4 +283,73 @@ public function getActive() {
     $sql = "SELECT * FROM oeuvre WHERE archive = 0 ORDER BY id DESC";
     return $this->db->query($sql)->fetchAll();
 }
+
+// === SOFT DELETE ===
+
+/**
+ * Supprime l'élément (soft delete)
+ */
+public function delete($id) {
+    $stmt = $this->db->prepare("UPDATE {$this->table} SET deleted_at = NOW() WHERE id = ?");
+    return $stmt->execute([$id]);
+}
+
+/**
+ * Restaure un élément supprimé
+ */
+public function restore($id) {
+    $stmt = $this->db->prepare("UPDATE {$this->table} SET deleted_at = NULL WHERE id = ?");
+    return $stmt->execute([$id]);
+}
+
+/**
+ * Supprime définitivement (hard delete)
+ */
+public function forceDelete($id) {
+    $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ?");
+    return $stmt->execute([$id]);
+}
+
+/**
+ * Récupère tous les éléments (y compris les supprimés)
+ */
+public function getAllWithTrashed() {
+    $stmt = $this->db->query("SELECT * FROM {$this->table} ORDER BY id DESC");
+    return $stmt->fetchAll();
+}
+
+/**
+ * Récupère uniquement les éléments supprimés (corbeille)
+ */
+public function getTrashed() {
+    $stmt = $this->db->query("SELECT * FROM {$this->table} WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC");
+    return $stmt->fetchAll();
+}
+
+/**
+ * Récupère uniquement les éléments actifs (non supprimés)
+ */
+public function getAll() {
+    $stmt = $this->db->query("SELECT * FROM {$this->table} WHERE deleted_at IS NULL ORDER BY id DESC");
+    return $stmt->fetchAll();
+}
+
+/**
+ * Récupère un élément par ID (actif ou supprimé)
+ */
+public function getByIdWithTrashed($id) {
+    $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = ?");
+    $stmt->execute([$id]);
+    return $stmt->fetch();
+}
+
+/**
+ * Supprime définitivement toutes les œuvres en corbeille
+ */
+public function forceDeleteAllTrashed() {
+    $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE deleted_at IS NOT NULL");
+    return $stmt->execute();
+}
+
+
 }

@@ -29,12 +29,21 @@
             <a href="<?= BASE_URL ?>admin/auteur/create" class="btn btn-success">
                 <i class="fas fa-plus"></i> Ajouter
             </a>
-            <a href="<?= BASE_URL ?>admin/auteur/exportPdf" class="btn btn-gold">
-                <i class="fas fa-file-pdf"></i> PDF
-            </a>
-            <a href="<?= BASE_URL ?>admin/auteur/exportExcel" class="btn btn-success">
-                <i class="fas fa-file-excel"></i> Excel
-            </a>
+           <!-- Construire la chaîne de requête -->
+        <?php
+            $queryParams = [];
+            if (!empty($keyword)) $queryParams['keyword'] = $keyword;
+            if (!empty($nationalite)) $queryParams['nationalite'] = $nationalite;
+            $queryString = http_build_query($queryParams);
+        ?>
+
+        <!-- Boutons d'export avec les filtres -->
+        <a href="<?= BASE_URL ?>admin/auteur/exportPdf?<?= $queryString ?>" class="btn btn-gold">
+            <i class="fas fa-file-pdf"></i> PDF
+        </a>
+        <a href="<?= BASE_URL ?>admin/auteur/exportExcel?<?= $queryString ?>" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Excel
+        </a>
         </div>
     </div>
 
@@ -91,6 +100,10 @@
                                 </a>
                                 <a href="<?= BASE_URL ?>admin/auteur/edit/<?= $auteur->id ?>" class="btn-icon edit" title="Modifier">
                                     <i class="fas fa-edit"></i>
+                                </a>
+                                <!-- Nouveau bouton Historique -->
+                                <a href="<?= BASE_URL ?>admin/audit?table=auteur&record_id=<?= $auteur->id ?>" class="btn-icon" style="color:#6c757d;" title="Historique des modifications">
+                                    <i class="fas fa-history"></i>
                                 </a>
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
                                     <form method="post" action="<?= BASE_URL ?>admin/auteur/delete/<?= $auteur->id ?>" style="display:inline;">

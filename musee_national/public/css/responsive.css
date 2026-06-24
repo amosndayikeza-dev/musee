@@ -1,0 +1,266 @@
+/* ============================================================
+   RESPONSIVE - Musée National
+   ============================================================ */
+
+/* --- Petits écrans : tablettes et mobiles --- */
+@media (max-width: 992px) {
+    /* Sidebar devient un menu hamburger */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100vh;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        background: var(--couleur-primaire, #1a2a3a);
+        overflow-y: auto;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Overlay pour fermer le menu */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    /* Le contenu principal prend toute la largeur */
+    .main-content {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+
+    /* Afficher le bouton de toggle */
+    .menu-toggle {
+        display: inline-block !important;
+    }
+
+    /* Ajuster le header */
+    .top-header {
+        padding: 10px 15px;
+        flex-wrap: wrap;
+    }
+
+    .header-left .page-title {
+        font-size: 16px;
+    }
+
+    .header-right .user-info {
+        font-size: 13px;
+    }
+
+    /* Grilles KPI : 2 colonnes */
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 15px;
+    }
+
+    /* Cartes en 1 colonne */
+    .card-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Tableaux : scroll horizontal */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-container .table-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .table-container .table-header .table-actions {
+        flex-wrap: wrap;
+        justify-content: stretch;
+    }
+
+    .table-container .table-header .table-actions .btn {
+        flex: 1;
+        justify-content: center;
+        font-size: 13px;
+        padding: 6px 12px;
+    }
+
+    /* Formulaires : pleine largeur */
+    .form-card {
+        padding: 20px 15px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr !important;
+        gap: 10px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 14px;
+        padding: 8px 10px;
+    }
+
+    /* Chat */
+    .chat-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    #chatMessages {
+        height: 300px !important;
+    }
+}
+
+/* --- Très petits écrans : smartphones --- */
+@media (max-width: 600px) {
+    /* Polices plus petites */
+    body {
+        font-size: 14px;
+    }
+
+    h1 {
+        font-size: 24px;
+    }
+    h2 {
+        font-size: 20px;
+    }
+    h3 {
+        font-size: 17px;
+    }
+    h4 {
+        font-size: 15px;
+    }
+
+    .top-header {
+        padding: 8px 10px;
+    }
+
+    .header-left .page-title {
+        font-size: 14px;
+        margin-left: 5px;
+    }
+
+    .header-right .user-info {
+        font-size: 12px;
+    }
+
+    .header-right .user-info small {
+        display: none; /* cacher le rôle sur très petits écrans */
+    }
+
+    .sidebar {
+        width: 260px;
+    }
+
+    /* KPI : 1 colonne */
+    .kpi-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Boutons en pleine largeur */
+    .btn {
+        padding: 8px 14px;
+        font-size: 13px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .table-actions .btn {
+        width: auto;
+        flex: 1 1 45%;
+    }
+
+    /* Tableaux : réduire les cellules */
+    .table th,
+    .table td {
+        padding: 6px 8px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    /* Supprimer les colonnes peu importantes sur mobile (ex: ID) */
+    .table .col-id {
+        display: none;
+    }
+
+    /* Formulaires */
+    .form-card .form-title {
+        font-size: 18px;
+    }
+
+    .form-group label {
+        font-size: 13px;
+    }
+
+    /* Chat */
+    #chatMessages {
+        height: 250px !important;
+    }
+
+    .chat-input-area {
+        flex-wrap: wrap;
+    }
+    .chat-input-area input[type="text"] {
+        min-width: 100%;
+        margin-bottom: 8px;
+    }
+    .chat-input-area button {
+        width: 100%;
+    }
+
+    /* Messages de la conversation */
+    .chat-bubble {
+        max-width: 85% !important;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    /* Hero */
+    .hero {
+        padding: 30px 15px;
+        border-radius: 8px;
+    }
+    .hero h1 {
+        font-size: 28px;
+    }
+    .hero p {
+        font-size: 15px;
+    }
+
+    /* Footer */
+    .footer-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px;
+        text-align: center;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+        gap: 5px;
+    }
+}
+
+/* --- Ajustements pour les tablettes en mode paysage --- */
+@media (min-width: 601px) and (max-width: 992px) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .card-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}

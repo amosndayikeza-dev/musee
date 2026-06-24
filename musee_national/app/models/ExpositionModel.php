@@ -2,8 +2,11 @@
 namespace App\Models;
 
 use App\Core\Model;
+use App\Core\SoftDeleteTrait;
 
 class ExpositionModel extends Model {
+
+    use SoftDeleteTrait;
     protected $table = 'expositions';
 
     /**
@@ -232,4 +235,12 @@ public function getExpositionsTerminees() {
             ORDER BY date_fin DESC";
     return $this->db->query($sql)->fetchAll();
 }
+
+// Ajouter une méthode pour mettre à jour la photo
+public function updatePhoto($id, $photoPath) {
+    $stmt = $this->db->prepare("UPDATE expositions SET photo = ? WHERE id = ?");
+    return $stmt->execute([$photoPath, $id]);
+}
+
+
 }

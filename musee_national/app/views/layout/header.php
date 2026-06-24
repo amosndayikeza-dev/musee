@@ -1,12 +1,117 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= SITE_NAME ?? 'Musée National' ?> - <?= $pageTitle ?? 'Administration' ?></title>
+    <link rel="stylesheet" href="<?= BASE_URL ?>css/responsive.css">
+    
+    <?php
+    // Récupérer le thème actif
+    use App\Models\ThemeModel;
+    $themeModel = new ThemeModel();
+    $activeTheme = $themeModel->getActive();
+    ?>
+    <style>
+    :root {
+        --couleur-primaire: <?= $activeTheme ? $activeTheme->couleur_primaire : '#1a2a3a' ?>;
+        --couleur-secondaire: <?= $activeTheme ? $activeTheme->couleur_secondaire : '#c9a84c' ?>;
+        --couleur-fond: <?= $activeTheme ? $activeTheme->couleur_fond : '#f4f6f9' ?>;
+        --couleur-texte: <?= $activeTheme ? $activeTheme->couleur_texte : '#333333' ?>;
+        --couleur-blanc: #ffffff;
+    }
+</style>
+
+<?php
+// Définir le nombre de notifications non lues
+use App\Services\NotificationService;
+$notificationService = new NotificationService();
+$unreadCount = 0;
+if (isset($_SESSION['user_id'])) {
+    $unreadCount = $notificationService->countUnread($_SESSION['user_id']);
+}
+?>
+
+<style>
+    /* === SURCHARGE DES COULEURS AVEC LES VARIABLES === */
+    .sidebar {
+        background: var(--couleur-primaire);
+    }
+    .sidebar-brand h2 {
+        color: var(--couleur-secondaire);
+    }
+    .sidebar-nav ul li a.active {
+        border-left-color: var(--couleur-secondaire);
+        background: rgba(201, 168, 76, 0.15);
+    }
+    .sidebar-nav ul li a:hover {
+        border-left-color: var(--couleur-secondaire);
+    }
+    .btn-gold {
+        background: var(--couleur-secondaire);
+        color: #fff;
+    }
+    .btn-gold:hover {
+        background: var(--couleur-secondaire);
+        filter: brightness(0.9);
+    }
+    .btn-primary {
+        background: var(--couleur-primaire);
+        color: #fff;
+    }
+    .btn-primary:hover {
+        background: var(--couleur-primaire);
+        filter: brightness(1.2);
+    }
+    .kpi-card {
+        border-top-color: var(--couleur-secondaire);
+    }
+    .content {
+        background: var(--couleur-fond);
+    }
+    .top-header {
+        background: var(--couleur-blanc, #ffffff);
+    }
+    .badge-gold {
+        background: var(--couleur-secondaire);
+        color: #fff;
+    }
+    .pagination .page-item.active .page-link {
+        background: var(--couleur-primaire);
+        border-color: var(--couleur-primaire);
+    }
+    .form-control:focus {
+        border-color: var(--couleur-secondaire);
+        box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.12);
+    }
+    .btn-login {
+        background: var(--couleur-primaire);
+    }
+    .btn-login:hover {
+        background: var(--couleur-primaire);
+        filter: brightness(0.8);
+    }
+    .session-warning {
+        background: var(--couleur-secondaire);
+    }
+    /* Ajoutez ici d'autres sélecteurs si nécessaire */
+</style>
+
+<!-- BLOC DE SURCHARGE -->
+<style>
+    .sidebar { background: var(--couleur-primaire); }
+    .sidebar-brand h2 { color: var(--couleur-secondaire); }
+    .btn-gold { background: var(--couleur-secondaire); }
+    .btn-primary { background: var(--couleur-primaire); }
+    .kpi-card { border-top-color: var(--couleur-secondaire); }
+    .content { background: var(--couleur-fond); }
+    /* ... etc */
+</style>
+    <?php $unread = "" ;?>
+    <!-- MAINTENANT charger style.css (il pourra utiliser les variables) -->
     <link rel="stylesheet" href="<?= BASE_URL ?>css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <?php
     // Vérifier si la session va expirer
     use App\Middlewares\SessionMiddleware;
@@ -105,8 +210,64 @@
                             <i class="fas fa-user-circle"></i> Mon profil
                         </a>
                     </li>
+                    <li>
+                        <a href="<?= BASE_URL ?>admin/audit" class="<?= strpos($_GET['url'] ?? '', 'admin/audit') !== false ? 'active' : '' ?>">
+                            <i class="fas fa-clipboard-list"></i> Audit
+                        </a>
+                    </li>
+
+                     <!-- ✅ MESSAGES : visible par admin ET conservateur -->
+                    <li>
+                        <a href="<?= BASE_URL ?>admin/messages">
+                            <i class="fas fa-envelope"></i> Messages
+                            <?php if ($unread > 0): ?>
+                                <span class="badge badge-danger"><?= $unread ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+
+                    <!-- ADMIN UNIQUEMENT -->
+                    <li>
+                        <a href="<?= BASE_URL ?>admin/themes" class="<?= strpos($_GET['url'] ?? '', 'admin/themes') !== false ? 'active' : '' ?>">
+                            <i class="fas fa-palette"></i> Thèmes
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= BASE_URL ?>admin/parametres" class="<?= strpos($_GET['url'] ?? '', 'admin/parametres') !== false ? 'active' : '' ?>">
+                            <i class="fas fa-cogs"></i> Paramètres
+                        </a>
+                    </li> 
+                    <li>  
+                        <a href="<?= BASE_URL ?>documentation/index" class="<?= strpos($_GET['url'] ?? '', 'documentation') !== false ? 'active' : '' ?>">
+                            <i class="fas fa-book"></i> Documentation
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= BASE_URL ?>admin/corbeille" class="<?= strpos($_GET['url'] ?? '', 'admin/corbeille') !== false ? 'active' : '' ?>">
+                            <i class="fas fa-trash-alt"></i> Corbeille
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= BASE_URL ?>chat" class="<?= strpos($_GET['url'] ?? '', 'chat') !== false ? 'active' : '' ?>">
+                            <i class="fas fa-comment-dots"></i> Chat
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= BASE_URL ?>admin/backup" class="<?= strpos($_GET['url'] ?? '', 'admin/backup') !== false ? 'active' : '' ?>">
+                            <i class="fas fa-database"></i> Sauvegardes
+                        </a>
+                    </li>
+                    <li>
+                        <a href="<?= BASE_URL ?>notification/index" class="<?= strpos($_GET['url'] ?? '', 'notification/index') !== false ? 'active' : '' ?>">
+                            <i class="fas fa-bell"></i> Notifications
+                            <?php if ($unreadCount > 0): ?>
+                                <span class="badge badge-danger"><?= $unreadCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
                 </ul>
             </nav>
+    
             <div class="sidebar-footer">
                 <a href="<?= BASE_URL ?>auth/logout">
                     <i class="fas fa-sign-out-alt"></i> Déconnexion
@@ -137,7 +298,6 @@
             <main class="content">
 
             <?php
-    use App\Services\NotificationService;
 
     $notificationService = new NotificationService();
     $unreadCount = 0;
@@ -203,6 +363,7 @@
             <small>(<?= $_SESSION['role'] ?? 'visiteur' ?>)</small>
         </span>
     </div>
+
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {

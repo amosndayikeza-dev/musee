@@ -6,13 +6,17 @@ use App\Models\CategorieModel;
 use App\Services\PdfExportService;
 use App\Middlewares\AuthMiddleware;
 use App\Services\ExcelExportService;
+use App\Services\AuditService;
+use App\Middlewares\SessionMiddleware;
 
 class CategorieController extends Controller {
     private $categorieModel;
 
     public function __construct() {
+        SessionMiddleware::check();
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('auth/login');
+            exit;
         }
         AuthMiddleware::requireAdminOrConservateur();
         $this->categorieModel = new CategorieModel();
@@ -22,7 +26,6 @@ class CategorieController extends Controller {
      * Liste des catégories avec recherche
      */
     public function indexAction() {
-        // Récupérer les filtres
         $keyword = $_GET['keyword'] ?? '';
         
         if (!empty($keyword)) {
@@ -52,7 +55,8 @@ class CategorieController extends Controller {
      */
     public function storeAction() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('categorie/create');
+            $this->redirect('admin/categorie/create');
+            return;
         }
 
         $data = [
@@ -60,7 +64,6 @@ class CategorieController extends Controller {
             'description' => trim($_POST['description'] ?? '')
         ];
 
-        // Validation
         if (empty($data['nom'])) {
             $this->render('create', [
                 'error' => 'Le nom de la catégorie est obligatoire',
@@ -70,7 +73,6 @@ class CategorieController extends Controller {
             return;
         }
 
-        // Vérifier si la catégorie existe déjà
         $existing = $this->categorieModel->findByName($data['nom']);
         if ($existing) {
             $this->render('create', [
@@ -81,9 +83,16 @@ class CategorieController extends Controller {
             return;
         }
 
-        $this->categorieModel->insert($data);
+        // 1. Insertion
+        $id = $this->categorieModel->insert($data);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('INSERT', 'categorie', $id, null, $data);
+
+        // 3. Redirection
         $_SESSION['success'] = "La catégorie a été ajoutée avec succès !";
-        $this->redirect('categorie/index');
+        $this->redirect('admin/categorie/index');
     }
 
     /**
@@ -92,7 +101,8 @@ class CategorieController extends Controller {
     public function editAction($id) {
         $categorie = $this->categorieModel->getById($id);
         if (!$categorie) {
-            $this->redirect('categorie/index');
+            $this->redirect('admin/categorie/index');
+            return;
         }
         $this->render('edit', [
             'categorie' => $categorie,
@@ -105,7 +115,15 @@ class CategorieController extends Controller {
      */
     public function updateAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('categorie/edit/' . $id);
+            $this->redirect('admin/categorie/edit/' . $id);
+            return;
+        }
+
+        // Récupérer les anciennes valeurs pour l'audit
+        $old = $this->categorieModel->getById($id);
+        if (!$old) {
+            $this->redirect('admin/categorie/index');
+            return;
         }
 
         $data = [
@@ -115,38 +133,64 @@ class CategorieController extends Controller {
 
         if (empty($data['nom'])) {
             $_SESSION['error'] = 'Le nom de la catégorie est obligatoire';
-            $this->redirect('categorie/edit/' . $id);
+            $this->redirect('admin/categorie/edit/' . $id);
             return;
         }
 
-        // Vérifier si le nom existe déjà (pour un autre ID)
+        // Vérifier si le nom existe déjà pour un autre ID
         $existing = $this->categorieModel->findByName($data['nom']);
         if ($existing && $existing->id != $id) {
             $_SESSION['error'] = 'Une catégorie avec ce nom existe déjà';
-            $this->redirect('categorie/edit/' . $id);
+            $this->redirect('admin/categorie/edit/' . $id);
             return;
         }
 
+        // 1. Mise à jour
         $this->categorieModel->update($id, $data);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('UPDATE', 'categorie', $id, (array)$old, $data);
+
+        // 3. Redirection
         $_SESSION['success'] = "La catégorie a été modifiée avec succès !";
-        $this->redirect('categorie/index');
+        $this->redirect('admin/categorie/index');
     }
 
     /**
-     * Supprimer une catégorie
+     * Supprimer une catégorie (soft delete)
      */
     public function deleteAction($id) {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Vérifier si la catégorie a des œuvres associées
-            $oeuvres = $this->categorieModel->getOeuvres($id);
-            if (count($oeuvres) > 0) {
-                $_SESSION['error'] = "Impossible de supprimer cette catégorie car elle a " . count($oeuvres) . " œuvre(s) associée(s).";
-            } else {
-                $this->categorieModel->delete($id);
-                $_SESSION['success'] = "La catégorie a été supprimée avec succès !";
-            }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/categorie/index');
+            return;
         }
-        $this->redirect('categorie/index');
+
+        // Vérifier si la catégorie a des œuvres associées
+        $oeuvres = $this->categorieModel->getOeuvres($id);
+        if (count($oeuvres) > 0) {
+            $_SESSION['error'] = "Impossible de supprimer cette catégorie car elle a " . count($oeuvres) . " œuvre(s) associée(s).";
+            $this->redirect('admin/categorie/index');
+            return;
+        }
+
+        // Récupérer les anciennes valeurs pour l'audit
+        $old = $this->categorieModel->getById($id);
+        if (!$old) {
+            $this->redirect('admin/categorie/index');
+            return;
+        }
+
+        // 1. Suppression (soft delete)
+        $this->categorieModel->delete($id);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('DELETE', 'categorie', $id, (array)$old, null);
+
+        // 3. Redirection
+        $_SESSION['success'] = "La catégorie a été supprimée avec succès !";
+        $this->redirect('admin/categorie/index');
     }
 
     /**
@@ -155,9 +199,9 @@ class CategorieController extends Controller {
     public function showAction($id) {
         $categorie = $this->categorieModel->getById($id);
         if (!$categorie) {
-            $this->redirect('categorie/index');
+            $this->redirect('admin/categorie/index');
+            return;
         }
-        // Récupérer les œuvres de la catégorie
         $oeuvres = $this->categorieModel->getOeuvres($id);
         $this->render('show', [
             'categorie' => $categorie,
@@ -186,7 +230,6 @@ class CategorieController extends Controller {
     public function exportPdfAction() {
         $categories = $this->categorieModel->getOeuvresCount();
         
-        // Générer le HTML pour le PDF
         $html = '<h1 style="text-align:center; color:#1a2a3a;">Liste des Catégories</h1>';
         $html .= '<p style="text-align:center; color:#888;">Généré le ' . date('d/m/Y H:i') . '</p>';
         $html .= '<hr>';
@@ -213,23 +256,24 @@ class CategorieController extends Controller {
         $pdfService->generateFromHtml($html, 'liste_categories', 'portrait');
     }
 
- 
-
-public function exportExcelAction() {
-    $categories = $this->categorieModel->getOeuvresCount();
-    
-    $headers = ['ID', 'Nom', 'Description', 'Nombre d\'œuvres'];
-    $data = [];
-    foreach ($categories as $categorie) {
-        $data[] = [
-            $categorie->id,
-            $categorie->nom,
-            $categorie->description ?? '',
-            $categorie->nb_oeuvres ?? 0
-        ];
+    /**
+     * Export Excel de la liste des catégories
+     */
+    public function exportExcelAction() {
+        $categories = $this->categorieModel->getOeuvresCount();
+        
+        $headers = ['ID', 'Nom', 'Description', 'Nombre d\'œuvres'];
+        $data = [];
+        foreach ($categories as $categorie) {
+            $data[] = [
+                $categorie->id,
+                $categorie->nom,
+                $categorie->description ?? '',
+                $categorie->nb_oeuvres ?? 0
+            ];
+        }
+        
+        $excel = new ExcelExportService();
+        $excel->export($data, $headers, 'categories_' . date('Y-m-d'), 'Liste des catégories');
     }
-    
-    $excel = new ExcelExportService();
-    $excel->export($data, $headers, 'categories_' . date('Y-m-d'), 'Liste des catégories');
-}
 }

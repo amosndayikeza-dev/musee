@@ -4,12 +4,14 @@ namespace App\Controllers\Web;
 use App\Core\Controller;
 use App\Models\UtilisateurModel;
 use App\Services\UploadService;
+use App\Middlewares\SessionMiddleware;
 
 class ProfilController extends Controller {
     
     private $utilisateurModel;
 
     public function __construct() {
+        SessionMiddleware::check();
         // Vérifier que l'utilisateur est connecté
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('auth/login');

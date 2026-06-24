@@ -4,13 +4,16 @@ namespace App\Controllers\Web;
 use App\Core\Controller;
 use App\Middlewares\AuthMiddleware;
 use App\Models\ParametresModel;
+use App\Middlewares\SessionMiddleware;
 
 class ParametresController extends Controller {
     
     private $parametresModel;
 
     public function __construct() {
+
         AuthMiddleware::requireAdmin();
+        SessionMiddleware::check();
         $this->parametresModel = new ParametresModel();
     }
 

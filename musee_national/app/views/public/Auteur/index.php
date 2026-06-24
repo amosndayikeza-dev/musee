@@ -36,7 +36,13 @@
             <?php foreach ($auteurs as $auteur): ?>
                 <div class="card">
                     <div class="card-image">
-                        <i class="fas fa-user-astronaut" style="font-size: 40px;"></i>
+                        <?php if (!empty($auteur->photo)): ?>
+                            <!-- CORRECTION : alt avec $auteur->nom au lieu de $exposition->titre -->
+                            <img src="<?= BASE_URL . $auteur->photo ?>" alt="<?= htmlspecialchars($auteur->nom) ?>" style="width:100%; height:200px; object-fit:cover;">
+                        <?php else: ?>
+                            <!-- CORRECTION : icône auteur au lieu de calendrier -->
+                            <i class="fas fa-user-astronaut" style="font-size:40px;"></i>
+                        <?php endif; ?>
                     </div>
                     <div class="card-body">
                         <h3><a href="<?= BASE_URL ?>public/auteur/show/<?= $auteur->id ?>">

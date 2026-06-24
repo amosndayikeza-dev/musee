@@ -1,10 +1,15 @@
 <div class="container">
     <div style="background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">
         <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 40px;">
+            <!-- Colonne gauche : photo ou icône -->
             <div style="text-align: center;">
-                <div style="background: #e9ecef; width: 100%; max-width: 300px; height: 300px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 80px; color: #999; margin: 0 auto;">
-                    <i class="fas fa-user-astronaut"></i>
-                </div>
+                <?php if (!empty($auteur->photo)): ?>
+                    <img src="<?= BASE_URL . $auteur->photo ?>" alt="<?= htmlspecialchars($auteur->nom) ?>" style="width:100%; max-width:300px; border-radius:50%; object-fit:cover;">
+                <?php else: ?>
+                    <div style="background: #e9ecef; width:100%; max-width:300px; height:300px; border-radius:50%; display: flex; align-items: center; justify-content: center; font-size: 80px; color: #999; margin: 0 auto;">
+                        <i class="fas fa-user-astronaut"></i>
+                    </div>
+                <?php endif; ?>
                 <h2 style="margin-top: 20px; color: #1a2a3a;">
                     <?= htmlspecialchars($auteur->nom) ?>
                     <?php if (!empty($auteur->prenom)): ?>
@@ -19,6 +24,8 @@
                     <?= $auteur->date_deces ? date('d/m/Y', strtotime($auteur->date_deces)) : 'Présent' ?>
                 </p>
             </div>
+
+            <!-- Colonne droite : biographie -->
             <div>
                 <h3 style="color: #1a2a3a; margin-bottom: 15px;">Biographie</h3>
                 <p style="line-height: 1.8; background: #f8f9fa; padding: 20px; border-radius: 8px;">

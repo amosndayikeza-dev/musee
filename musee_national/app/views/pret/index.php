@@ -135,6 +135,10 @@
                                 <a href="<?= BASE_URL ?>admin/pret/edit/<?= $pret->id ?>" class="btn-icon edit" title="Modifier">
                                     <i class="fas fa-edit"></i>
                                 </a>
+                                <a href="<?= BASE_URL ?>admin/audit?table=pret&record_id=<?= $pret->id ?>" class="btn-icon edit" title="Modifier">
+                                    <i class="fas fa-history"></i>
+                                </a>
+                                
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
                                     <form method="post" action="<?= BASE_URL ?>admin/pret/delete/<?= $pret->id ?>" style="display:inline;">
                                         <button type="submit" class="btn-icon delete" onclick="return confirm('Supprimer ce prêt ?')" title="Supprimer">

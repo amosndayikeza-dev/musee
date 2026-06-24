@@ -16,10 +16,22 @@
             <a href="<?= BASE_URL ?>admin/oeuvre/create" class="btn btn-success">
                 <i class="fas fa-plus"></i> Ajouter
             </a>
-            <a href="<?= BASE_URL ?>admin/oeuvre/exportPdf" class="btn btn-gold">
+            <!-- Construire la chaîne de requête avec les filtres actuels -->
+            <?php
+            $queryParams = [];
+            if (!empty($keyword)) $queryParams['keyword'] = $keyword;
+            if (!empty($auteur_id)) $queryParams['auteur_id'] = $auteur_id;
+            if (!empty($categorie_id)) $queryParams['categorie_id'] = $categorie_id;
+            if (!empty($statut)) $queryParams['statut'] = $statut;
+            if (!empty($date_debut)) $queryParams['date_debut'] = $date_debut;
+            if (!empty($date_fin)) $queryParams['date_fin'] = $date_fin;
+            $queryString = http_build_query($queryParams);
+            ?>
+
+            <a href="<?= BASE_URL ?>admin/oeuvre/exportPdf?<?= $queryString ?>" class="btn btn-gold">
                 <i class="fas fa-file-pdf"></i> PDF
             </a>
-            <a href="<?= BASE_URL ?>admin/oeuvre/exportExcel" class="btn btn-success">
+            <a href="<?= BASE_URL ?>admin/oeuvre/exportExcel?<?= $queryString ?>" class="btn btn-success">
                 <i class="fas fa-file-excel"></i> Excel
             </a>
         </div>
@@ -139,14 +151,23 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 <a href="<?= BASE_URL ?>admin/oeuvre/edit/<?= $oeuvre->id ?>" class="btn-icon edit" title="Modifier">
-                                    <i class="fas fa-edit"></i>
+                                    <i class="fas fa-history"></i>
                                 </a>
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
-                                    <form method="post" action="<?= BASE_URL ?>admin/oeuvre/archive/<?= $oeuvre->id ?>" style="display:inline;">
-                                        <button type="submit" class="btn-icon" style="color:#ff9800;" onclick="return confirm('Archiver cette œuvre ?')" title="Archiver">
-                                            <i class="fas fa-archive"></i>
-                                        </button>
-                                    </form>
+                                    <!-- Archiver (visible uniquement pour les œuvres non archivées) -->
+                                    <?php if ($oeuvre->archive != 1): ?>
+                                        <form method="post" action="<?= BASE_URL ?>admin/oeuvre/archive/<?= $oeuvre->id ?>" style="display:inline;">
+                                            <button type="submit" class="btn-icon" style="color:#ff9800;" onclick="return confirm('Archiver cette œuvre ?')" title="Archiver">
+                                                <i class="fas fa-archive"></i>
+                                            </button>
+                                        </form>
+                                    <?php else: ?>
+                                        <form method="post" action="<?= BASE_URL ?>admin/oeuvre/unarchive/<?= $oeuvre->id ?>" style="display:inline;">
+                                            <button type="submit" class="btn-icon" style="color:#28a745;" onclick="return confirm('Restaurer cette œuvre ?')" title="Restaurer">
+                                                <i class="fas fa-undo-alt"></i>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                     <form method="post" action="<?= BASE_URL ?>admin/oeuvre/delete/<?= $oeuvre->id ?>" style="display:inline;">
                                         <button type="submit" class="btn-icon delete" onclick="return confirm('Supprimer cette œuvre ?')" title="Supprimer">
                                             <i class="fas fa-trash-alt"></i>

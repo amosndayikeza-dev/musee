@@ -4,12 +4,14 @@ namespace App\Controllers\Web;
 use App\Core\Controller;
 use App\Models\UtilisateurModel;
 use App\Services\EmailService;
+use App\Middlewares\SessionMiddleware;
 
 class ResetPasswordController extends Controller {
     
     private $utilisateurModel;
 
     public function __construct() {
+        SessionMiddleware::check();
         $this->utilisateurModel = new UtilisateurModel();
     }
 

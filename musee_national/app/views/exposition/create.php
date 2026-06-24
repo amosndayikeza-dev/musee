@@ -9,7 +9,7 @@
         </div>
     <?php endif; ?>
 
-    <form method="post" action="<?= BASE_URL ?>admin/exposition/store">
+    <form method="post" action="<?= BASE_URL ?>admin/exposition/store" enctype="multipart/form-data">
         <div class="form-group form-row-full">
             <label>Titre <span class="required">*</span></label>
             <input type="text" name="titre" class="form-control" value="<?= htmlspecialchars($old['titre'] ?? '') ?>" required>
@@ -55,6 +55,17 @@
                 <?php endforeach; ?>
             </select>
             <small style="color:#888;">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs œuvres</small>
+        </div>
+
+        <div class="form-group form-row-full">
+            <label>Photo de l’exposition</label>
+            <?php if (isset($old['photo']) && !empty($old['photo'])): ?>
+                <div style="margin-bottom:10px;">
+                    <img src="<?= BASE_URL . $old['photo'] ?>" style="max-width:200px; border-radius:8px;">
+                </div>
+            <?php endif; ?>
+            <input type="file" name="photo" class="form-control" accept="image/*">
+            <small style="color:#888;">Formats : JPG, PNG, GIF, WEBP (max 2 Mo)</small>
         </div>
 
         <div class="form-row" style="margin-top: 20px;">

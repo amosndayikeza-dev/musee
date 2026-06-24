@@ -2,8 +2,11 @@
 namespace App\Models;
 
 use App\Core\Model;
+use App\Core\SoftDeleteTrait; 
 
 class PretModel extends Model {
+
+    use SoftDeleteTrait; 
     protected $table = 'prets';
 
     /**

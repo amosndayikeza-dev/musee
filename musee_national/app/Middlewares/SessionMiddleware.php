@@ -29,7 +29,7 @@ class SessionMiddleware {
             session_destroy();
             
             // Rediriger vers la page d'accueil (au lieu de la page de login)
-            header('Location: ' . BASE_URL . 'home/index?timeout=1');
+            header('Location: ' . BASE_URL . 'auth/login?timeout=1');
             exit;
         }
         

@@ -7,45 +7,42 @@
         </div>
     <?php endif; ?>
     
-    <div style="display: grid; grid-template-columns: 300px 1fr; gap: 30px;">
+    <div class="profil-grid">
         <!-- Photo de profil -->
-        <div style="text-align: center;">
+        <div class="profil-avatar">
             <?php if (!empty($user->photo)): ?>
-                <img src="<?= BASE_URL . $user->photo ?>" alt="Photo de profil" 
-                     style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 3px solid #c9a84c;">
+                <img src="<?= BASE_URL . $user->photo ?>" alt="Photo de profil" class="avatar-img">
             <?php else: ?>
-                <div style="width: 200px; height: 200px; border-radius: 50%; background: #e9ecef; display: flex; align-items: center; justify-content: center; font-size: 80px; color: #999; margin: 0 auto;">
+                <div class="avatar-placeholder">
                     <i class="fas fa-user"></i>
                 </div>
             <?php endif; ?>
             
-            <div style="margin-top: 15px;">
+            <div class="avatar-actions">
                 <a href="<?= BASE_URL ?>profil/edit" class="btn btn-primary">
                     <i class="fas fa-edit"></i> Modifier mon profil
                 </a>
-            </div>
-            <div style="margin-top: 10px;">
-                <a href="<?= BASE_URL ?>profil/password" class="btn btn-outline" style="border:1px solid #ddd;">
+                <a href="<?= BASE_URL ?>profil/password" class="btn btn-outline">
                     <i class="fas fa-key"></i> Changer mot de passe
                 </a>
             </div>
         </div>
         
         <!-- Informations -->
-        <div style="background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">
-            <h3 style="margin-top: 0;">Informations personnelles</h3>
-            <table style="width: 100%;">
+        <div class="profil-info">
+            <h3>Informations personnelles</h3>
+            <table class="profil-table">
                 <tr>
-                    <td style="padding: 8px 0; font-weight: 600; width: 150px;">Nom complet</td>
-                    <td style="padding: 8px 0;"><?= htmlspecialchars($user->prenom . ' ' . $user->nom) ?></td>
+                    <td class="label">Nom complet</td>
+                    <td><?= htmlspecialchars($user->prenom . ' ' . $user->nom) ?></td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px 0; font-weight: 600;">Email</td>
-                    <td style="padding: 8px 0;"><?= htmlspecialchars($user->email) ?></td>
+                    <td class="label">Email</td>
+                    <td><?= htmlspecialchars($user->email) ?></td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px 0; font-weight: 600;">Rôle</td>
-                    <td style="padding: 8px 0;">
+                    <td class="label">Rôle</td>
+                    <td>
                         <span class="badge badge-<?= $user->role === 'admin' ? 'danger' : ($user->role === 'conservateur' ? 'warning' : 'secondary') ?>">
                             <?= ucfirst($user->role) ?>
                         </span>
@@ -53,20 +50,20 @@
                 </tr>
                 <?php if (!empty($user->telephone)): ?>
                     <tr>
-                        <td style="padding: 8px 0; font-weight: 600;">Téléphone</td>
-                        <td style="padding: 8px 0;"><?= htmlspecialchars($user->telephone) ?></td>
+                        <td class="label">Téléphone</td>
+                        <td><?= htmlspecialchars($user->telephone) ?></td>
                     </tr>
                 <?php endif; ?>
                 <?php if (!empty($user->date_naissance)): ?>
                     <tr>
-                        <td style="padding: 8px 0; font-weight: 600;">Date de naissance</td>
-                        <td style="padding: 8px 0;"><?= date('d/m/Y', strtotime($user->date_naissance)) ?></td>
+                        <td class="label">Date de naissance</td>
+                        <td><?= date('d/m/Y', strtotime($user->date_naissance)) ?></td>
                     </tr>
                 <?php endif; ?>
                 <?php if (!empty($user->adresse)): ?>
                     <tr>
-                        <td style="padding: 8px 0; font-weight: 600;">Adresse</td>
-                        <td style="padding: 8px 0;">
+                        <td class="label">Adresse</td>
+                        <td>
                             <?= htmlspecialchars($user->adresse) ?>
                             <?php if (!empty($user->ville)): ?>, <?= htmlspecialchars($user->ville) ?><?php endif; ?>
                             <?php if (!empty($user->code_postal)): ?> (<?= htmlspecialchars($user->code_postal) ?>)<?php endif; ?>
@@ -76,45 +73,34 @@
                 <?php endif; ?>
                 <?php if (!empty($user->biographie)): ?>
                     <tr>
-                        <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">Biographie</td>
-                        <td style="padding: 8px 0;"><?= nl2br(htmlspecialchars($user->biographie)) ?></td>
+                        <td class="label" style="vertical-align:top;">Biographie</td>
+                        <td><?= nl2br(htmlspecialchars($user->biographie)) ?></td>
                     </tr>
                 <?php endif; ?>
                 <tr>
-                    <td style="padding: 8px 0; font-weight: 600;">Date d'inscription</td>
-                    <td style="padding: 8px 0;"><?= date('d/m/Y H:i', strtotime($user->date_creation)) ?></td>
+                    <td class="label">Date d'inscription</td>
+                    <td><?= date('d/m/Y H:i', strtotime($user->date_creation)) ?></td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px 0; font-weight: 600;">Dernière connexion</td>
-                    <td style="padding: 8px 0;"><?= $user->dernier_acces ? date('d/m/Y H:i', strtotime($user->dernier_acces)) : 'Jamais' ?></td>
+                    <td class="label">Dernière connexion</td>
+                    <td><?= $user->dernier_acces ? date('d/m/Y H:i', strtotime($user->dernier_acces)) : 'Jamais' ?></td>
                 </tr>
             </table>
             
             <!-- Statistiques -->
             <h3 style="margin-top: 30px;">Statistiques</h3>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 700; color: #1a2a3a;"><?= $stats['connexions'] ?? 0 ?></div>
-                    <div style="font-size: 13px; color: #888;">Connexions</div>
+            <div class="profil-stats">
+                <div class="stat-item">
+                    <div class="stat-value"><?= $stats['connexions'] ?? 0 ?></div>
+                    <div class="stat-label">Connexions</div>
                 </div>
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 700; color: #1a2a3a;">
-                        <?php 
-                            $nbActions = 0;
-                            // Compter les actions dans l'audit
-                            if (isset($user->id)) {
-                                // À implémenter avec le service d'audit
-                            }
-                            echo $nbActions;
-                        ?>
-                    </div>
-                    <div style="font-size: 13px; color: #888;">Actions effectuées</div>
+                <div class="stat-item">
+                    <div class="stat-value"><?= $nbActions ?? 0 ?></div>
+                    <div class="stat-label">Actions effectuées</div>
                 </div>
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 700; color: #1a2a3a;">
-                        <?= date_diff(new DateTime($user->date_creation), new DateTime())->days ?>
-                    </div>
-                    <div style="font-size: 13px; color: #888;">Jours d'ancienneté</div>
+                <div class="stat-item">
+                    <div class="stat-value"><?= date_diff(new DateTime($user->date_creation), new DateTime())->days ?></div>
+                    <div class="stat-label">Jours d'ancienneté</div>
                 </div>
             </div>
             

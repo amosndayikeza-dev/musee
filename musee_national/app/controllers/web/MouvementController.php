@@ -7,14 +7,18 @@ use App\Models\OeuvreModel;
 use App\Services\PdfExportService;
 use App\Middlewares\AuthMiddleware;
 use App\Services\ExcelExportService;
+use App\Services\AuditService;
+use App\Middlewares\SessionMiddleware;
 
 class MouvementController extends Controller {
     private $mouvementModel;
     private $oeuvreModel;
 
     public function __construct() {
+        SessionMiddleware::check();
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('auth/login');
+            exit;
         }
         AuthMiddleware::requireAdminOrConservateur();
         $this->mouvementModel = new MouvementModel();
@@ -25,14 +29,12 @@ class MouvementController extends Controller {
      * Liste des mouvements avec recherche et filtres
      */
     public function indexAction() {
-        // Récupérer les filtres
         $keyword = $_GET['keyword'] ?? '';
         $oeuvre_id = $_GET['oeuvre_id'] ?? '';
         $type = $_GET['type'] ?? '';
         $date_debut = $_GET['date_debut'] ?? '';
         $date_fin = $_GET['date_fin'] ?? '';
         
-        // Construire la requête avec filtres
         $mouvements = $this->mouvementModel->getWithFilters([
             'keyword' => $keyword,
             'oeuvre_id' => $oeuvre_id,
@@ -41,7 +43,6 @@ class MouvementController extends Controller {
             'date_fin' => $date_fin
         ]);
         
-        // Récupérer les données pour les filtres
         $oeuvres = $this->oeuvreModel->getAll();
         $types = ['entrée', 'sortie'];
         
@@ -74,7 +75,8 @@ class MouvementController extends Controller {
      */
     public function storeAction() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('mouvement/create');
+            $this->redirect('admin/mouvement/create');
+            return;
         }
 
         $data = [
@@ -86,7 +88,6 @@ class MouvementController extends Controller {
             'responsable' => trim($_POST['responsable'] ?? '')
         ];
 
-        // Validation
         if (empty($data['oeuvre_id']) || empty($data['date'])) {
             $oeuvres = $this->oeuvreModel->getAll();
             $this->render('create', [
@@ -98,7 +99,6 @@ class MouvementController extends Controller {
             return;
         }
 
-        // Validation spécifique : pour une sortie, la destination est obligatoire
         if ($data['type'] === 'sortie' && empty($data['destination'])) {
             $oeuvres = $this->oeuvreModel->getAll();
             $this->render('create', [
@@ -110,7 +110,6 @@ class MouvementController extends Controller {
             return;
         }
 
-        // Validation spécifique : pour une entrée, la provenance est obligatoire
         if ($data['type'] === 'entrée' && empty($data['provenance'])) {
             $oeuvres = $this->oeuvreModel->getAll();
             $this->render('create', [
@@ -122,9 +121,16 @@ class MouvementController extends Controller {
             return;
         }
 
-        $this->mouvementModel->insert($data);
+        // 1. Insertion
+        $id = $this->mouvementModel->insert($data);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('INSERT', 'mouvement', $id, null, $data);
+
+        // 3. Redirection
         $_SESSION['success'] = "Le mouvement a été ajouté avec succès !";
-        $this->redirect('mouvement/index');
+        $this->redirect('admin/mouvement/index');
     }
 
     /**
@@ -133,7 +139,8 @@ class MouvementController extends Controller {
     public function editAction($id) {
         $mouvement = $this->mouvementModel->getById($id);
         if (!$mouvement) {
-            $this->redirect('mouvement/index');
+            $this->redirect('admin/mouvement/index');
+            return;
         }
         $oeuvres = $this->oeuvreModel->getAll();
         $this->render('edit', [
@@ -148,7 +155,15 @@ class MouvementController extends Controller {
      */
     public function updateAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('mouvement/edit/' . $id);
+            $this->redirect('admin/mouvement/edit/' . $id);
+            return;
+        }
+
+        // Récupérer les anciennes valeurs pour l'audit
+        $old = $this->mouvementModel->getById($id);
+        if (!$old) {
+            $this->redirect('admin/mouvement/index');
+            return;
         }
 
         $data = [
@@ -162,38 +177,60 @@ class MouvementController extends Controller {
 
         if (empty($data['oeuvre_id']) || empty($data['date'])) {
             $_SESSION['error'] = 'L\'œuvre et la date sont obligatoires';
-            $this->redirect('mouvement/edit/' . $id);
+            $this->redirect('admin/mouvement/edit/' . $id);
             return;
         }
 
-        // Validation spécifique : pour une sortie, la destination est obligatoire
         if ($data['type'] === 'sortie' && empty($data['destination'])) {
             $_SESSION['error'] = 'La destination est obligatoire pour une sortie';
-            $this->redirect('mouvement/edit/' . $id);
+            $this->redirect('admin/mouvement/edit/' . $id);
             return;
         }
 
-        // Validation spécifique : pour une entrée, la provenance est obligatoire
         if ($data['type'] === 'entrée' && empty($data['provenance'])) {
             $_SESSION['error'] = 'La provenance est obligatoire pour une entrée';
-            $this->redirect('mouvement/edit/' . $id);
+            $this->redirect('admin/mouvement/edit/' . $id);
             return;
         }
 
+        // 1. Mise à jour
         $this->mouvementModel->update($id, $data);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('UPDATE', 'mouvement', $id, (array)$old, $data);
+
+        // 3. Redirection
         $_SESSION['success'] = "Le mouvement a été modifié avec succès !";
-        $this->redirect('mouvement/index');
+        $this->redirect('admin/mouvement/index');
     }
 
     /**
-     * Supprimer un mouvement
+     * Supprimer un mouvement (soft delete)
      */
     public function deleteAction($id) {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->mouvementModel->delete($id);
-            $_SESSION['success'] = "Le mouvement a été supprimé avec succès !";
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/mouvement/index');
+            return;
         }
-        $this->redirect('mouvement/index');
+
+        // Récupérer les anciennes valeurs pour l'audit
+        $old = $this->mouvementModel->getById($id);
+        if (!$old) {
+            $this->redirect('admin/mouvement/index');
+            return;
+        }
+
+        // 1. Soft delete
+        $this->mouvementModel->delete($id);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('DELETE', 'mouvement', $id, (array)$old, null);
+
+        // 3. Redirection
+        $_SESSION['success'] = "Le mouvement a été supprimé avec succès !";
+        $this->redirect('admin/mouvement/index');
     }
 
     /**
@@ -202,7 +239,8 @@ class MouvementController extends Controller {
     public function showAction($id) {
         $mouvement = $this->mouvementModel->getWithOeuvre($id);
         if (!$mouvement) {
-            $this->redirect('mouvement/index');
+            $this->redirect('admin/mouvement/index');
+            return;
         }
         $this->render('show', [
             'mouvement' => $mouvement,
@@ -230,7 +268,6 @@ class MouvementController extends Controller {
     public function exportPdfAction() {
         $mouvements = $this->mouvementModel->getAll();
         
-        // Générer le HTML pour le PDF
         $html = '<h1 style="text-align:center; color:#1a2a3a;">Liste des Mouvements</h1>';
         $html .= '<p style="text-align:center; color:#888;">Généré le ' . date('d/m/Y H:i') . '</p>';
         $html .= '<hr>';
@@ -247,7 +284,6 @@ class MouvementController extends Controller {
                     </tr>
                   </thead><tbody>';
         foreach ($mouvements as $mouvement) {
-            // Récupérer le titre de l'œuvre
             $oeuvre = $this->oeuvreModel->getById($mouvement->oeuvre_id);
             $html .= '<tr>
                         <td>' . $mouvement->id . '</td>
@@ -265,26 +301,28 @@ class MouvementController extends Controller {
         $pdfService->generateFromHtml($html, 'liste_mouvements', 'landscape');
     }
 
-
-public function exportExcelAction() {
-    $mouvements = $this->mouvementModel->getAll();
-    
-    $headers = ['ID', 'Œuvre', 'Type', 'Date', 'Provenance', 'Destination', 'Responsable'];
-    $data = [];
-    foreach ($mouvements as $mouvement) {
-        $oeuvre = $this->oeuvreModel->getById($mouvement->oeuvre_id);
-        $data[] = [
-            $mouvement->id,
-            $oeuvre->titre ?? 'Non trouvée',
-            $mouvement->type,
-            date('d/m/Y', strtotime($mouvement->date)),
-            $mouvement->provenance ?? '',
-            $mouvement->destination ?? '',
-            $mouvement->responsable ?? ''
-        ];
+    /**
+     * Export Excel de la liste des mouvements
+     */
+    public function exportExcelAction() {
+        $mouvements = $this->mouvementModel->getAll();
+        
+        $headers = ['ID', 'Œuvre', 'Type', 'Date', 'Provenance', 'Destination', 'Responsable'];
+        $data = [];
+        foreach ($mouvements as $mouvement) {
+            $oeuvre = $this->oeuvreModel->getById($mouvement->oeuvre_id);
+            $data[] = [
+                $mouvement->id,
+                $oeuvre->titre ?? 'Non trouvée',
+                $mouvement->type,
+                date('d/m/Y', strtotime($mouvement->date)),
+                $mouvement->provenance ?? '',
+                $mouvement->destination ?? '',
+                $mouvement->responsable ?? ''
+            ];
+        }
+        
+        $excel = new ExcelExportService();
+        $excel->export($data, $headers, 'mouvements_' . date('Y-m-d'), 'Liste des mouvements');
     }
-    
-    $excel = new ExcelExportService();
-    $excel->export($data, $headers, 'mouvements_' . date('Y-m-d'), 'Liste des mouvements');
-}
 }

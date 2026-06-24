@@ -2,6 +2,8 @@
 namespace App\Core;
 
 class Model {
+
+    
     protected $db;
     protected $table;
 

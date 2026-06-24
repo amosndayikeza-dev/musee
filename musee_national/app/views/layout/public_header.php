@@ -24,9 +24,9 @@
                         <li><a href="<?= BASE_URL ?>public/oeuvre" class="<?= strpos($_GET['url'] ?? '', 'public/oeuvre') !== false ? 'active' : '' ?>">Œuvres</a></li>
                         <li><a href="<?= BASE_URL ?>public/auteur" class="<?= strpos($_GET['url'] ?? '', 'public/auteur') !== false ? 'active' : '' ?>">Auteurs</a></li>
                         <li><a href="<?= BASE_URL ?>public/exposition" class="<?= strpos($_GET['url'] ?? '', 'public/exposition') !== false ? 'active' : '' ?>">Expositions</a></li>
-                        <?php if (isset($_SESSION['user_id'])): ?>
-                            <li><a href="<?= BASE_URL ?>chat"><i class="fas fa-comment-dots"></i> Chat</a></li>
-                        <?php endif; ?>
+                        <?php /*if (isset($_SESSION['user_id'])): */?>
+                            <li><a href="<?= BASE_URL ?>chat"> <!--<i class="fas fa-comment-dots"></i> Chat</a> --></li>
+                        <?php /* endif; */?>
                         <li><a href="<?= BASE_URL ?>public/contact" class="<?= strpos($_GET['url'] ?? '', 'public/contact') !== false ? 'active' : '' ?>">Contact</a></li>
                     </ul>
                 </nav>

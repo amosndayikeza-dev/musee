@@ -5,15 +5,20 @@ use App\Core\Controller;
 use App\Models\UtilisateurModel;
 use App\Services\PdfExportService;
 use App\Middlewares\AuthMiddleware;
+use App\Middlewares\SessionMiddleware;
 use App\Services\ExcelExportService;
+use App\Services\AuditService;
 
 class UtilisateurController extends Controller {
     private $utilisateurModel;
 
     public function __construct() {
+
+         SessionMiddleware::check();
         // Vérifier que l'utilisateur est connecté ET est admin
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
             $this->redirect('auth/login');
+            exit;
         }
         // Seul l'admin peut gérer les utilisateurs
         AuthMiddleware::requireAdmin();
@@ -53,7 +58,8 @@ class UtilisateurController extends Controller {
      */
     public function storeAction() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('utilisateur/create');
+            $this->redirect('admin/utilisateur/create');
+            return;
         }
 
         $data = [
@@ -74,7 +80,6 @@ class UtilisateurController extends Controller {
             return;
         }
 
-        // Vérifier l'email
         if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             $this->render('create', [
                 'error' => 'Email invalide',
@@ -84,7 +89,6 @@ class UtilisateurController extends Controller {
             return;
         }
 
-        // Vérifier si l'email existe déjà
         if ($this->utilisateurModel->emailExists($data['email'])) {
             $this->render('create', [
                 'error' => 'Cet email est déjà utilisé',
@@ -94,7 +98,6 @@ class UtilisateurController extends Controller {
             return;
         }
 
-        // Vérifier la longueur du mot de passe
         if (strlen($data['mot_de_passe']) < 6) {
             $this->render('create', [
                 'error' => 'Le mot de passe doit contenir au moins 6 caractères',
@@ -104,9 +107,16 @@ class UtilisateurController extends Controller {
             return;
         }
 
-        $this->utilisateurModel->create($data);
+        // 1. Insertion
+        $id = $this->utilisateurModel->create($data);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('INSERT', 'utilisateur', $id, null, $data);
+
+        // 3. Redirection
         $_SESSION['success'] = "L'utilisateur a été créé avec succès !";
-        $this->redirect('utilisateur/index');
+        $this->redirect('admin/utilisateur/index');
     }
 
     /**
@@ -115,13 +125,15 @@ class UtilisateurController extends Controller {
     public function editAction($id) {
         $utilisateur = $this->utilisateurModel->getById($id);
         if (!$utilisateur) {
-            $this->redirect('utilisateur/index');
+            $this->redirect('admin/utilisateur/index');
+            return;
         }
         
         // Empêcher l'édition de son propre compte depuis cette interface
         if ($id == $_SESSION['user_id']) {
             $_SESSION['error'] = "Vous ne pouvez pas modifier votre propre compte depuis cette interface.";
-            $this->redirect('utilisateur/index');
+            $this->redirect('admin/utilisateur/index');
+            return;
         }
         
         $this->render('edit', [
@@ -135,7 +147,15 @@ class UtilisateurController extends Controller {
      */
     public function updateAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('utilisateur/edit/' . $id);
+            $this->redirect('admin/utilisateur/edit/' . $id);
+            return;
+        }
+
+        // Récupérer les anciennes valeurs pour l'audit
+        $old = $this->utilisateurModel->getById($id);
+        if (!$old) {
+            $this->redirect('admin/utilisateur/index');
+            return;
         }
 
         $data = [
@@ -149,29 +169,27 @@ class UtilisateurController extends Controller {
         if (!empty($_POST['mot_de_passe'])) {
             if (strlen($_POST['mot_de_passe']) < 6) {
                 $_SESSION['error'] = 'Le mot de passe doit contenir au moins 6 caractères';
-                $this->redirect('utilisateur/edit/' . $id);
+                $this->redirect('admin/utilisateur/edit/' . $id);
                 return;
             }
             $data['mot_de_passe'] = $_POST['mot_de_passe'];
         }
 
-        // Validation
         if (empty($data['nom']) || empty($data['email'])) {
             $_SESSION['error'] = 'Le nom et l\'email sont obligatoires';
-            $this->redirect('utilisateur/edit/' . $id);
+            $this->redirect('admin/utilisateur/edit/' . $id);
             return;
         }
 
         if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             $_SESSION['error'] = 'Email invalide';
-            $this->redirect('utilisateur/edit/' . $id);
+            $this->redirect('admin/utilisateur/edit/' . $id);
             return;
         }
 
-        // Vérifier si l'email existe déjà (sauf pour cet utilisateur)
         if ($this->utilisateurModel->emailExists($data['email'], $id)) {
             $_SESSION['error'] = 'Cet email est déjà utilisé par un autre utilisateur';
-            $this->redirect('utilisateur/edit/' . $id);
+            $this->redirect('admin/utilisateur/edit/' . $id);
             return;
         }
 
@@ -180,23 +198,32 @@ class UtilisateurController extends Controller {
             unset($data['role']);
         }
 
+        // 1. Mise à jour
         $this->utilisateurModel->updateUser($id, $data);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('UPDATE', 'utilisateur', $id, (array)$old, $data);
+
+        // 3. Redirection
         $_SESSION['success'] = "L'utilisateur a été modifié avec succès !";
-        $this->redirect('utilisateur/index');
+        $this->redirect('admin/utilisateur/index');
     }
 
     /**
-     * Supprimer un utilisateur
+     * Supprimer un utilisateur (soft delete)
      */
     public function deleteAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('utilisateur/index');
+            $this->redirect('admin/utilisateur/index');
+            return;
         }
 
         // Empêcher la suppression de son propre compte
         if ($id == $_SESSION['user_id']) {
             $_SESSION['error'] = "Vous ne pouvez pas supprimer votre propre compte.";
-            $this->redirect('utilisateur/index');
+            $this->redirect('admin/utilisateur/index');
+            return;
         }
 
         // Empêcher la suppression du dernier administrateur
@@ -205,13 +232,28 @@ class UtilisateurController extends Controller {
             $user = $this->utilisateurModel->getById($id);
             if ($user && $user->role === 'admin' && $admins <= 1) {
                 $_SESSION['error'] = "Impossible de supprimer le dernier administrateur.";
-                $this->redirect('utilisateur/index');
+                $this->redirect('admin/utilisateur/index');
+                return;
             }
         }
 
+        // Récupérer les anciennes valeurs pour l'audit
+        $old = $this->utilisateurModel->getById($id);
+        if (!$old) {
+            $this->redirect('admin/utilisateur/index');
+            return;
+        }
+
+        // 1. Soft delete
         $this->utilisateurModel->delete($id);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('DELETE', 'utilisateur', $id, (array)$old, null);
+
+        // 3. Redirection
         $_SESSION['success'] = "L'utilisateur a été supprimé avec succès !";
-        $this->redirect('utilisateur/index');
+        $this->redirect('admin/utilisateur/index');
     }
 
     /**
@@ -220,7 +262,8 @@ class UtilisateurController extends Controller {
     public function showAction($id) {
         $utilisateur = $this->utilisateurModel->getById($id);
         if (!$utilisateur) {
-            $this->redirect('utilisateur/index');
+            $this->redirect('admin/utilisateur/index');
+            return;
         }
         $this->render('show', [
             'utilisateur' => $utilisateur,
@@ -266,24 +309,27 @@ class UtilisateurController extends Controller {
         $pdfService->generateFromHtml($html, 'liste_utilisateurs', 'landscape');
     }
 
-public function exportExcelAction() {
-    $utilisateurs = $this->utilisateurModel->getAllWithRoles();
-    
-    $headers = ['ID', 'Nom', 'Prénom', 'Email', 'Rôle', 'Date création', 'Dernier accès'];
-    $data = [];
-    foreach ($utilisateurs as $user) {
-        $data[] = [
-            $user->id,
-            $user->nom,
-            $user->prenom ?? '',
-            $user->email,
-            $user->role,
-            date('d/m/Y H:i', strtotime($user->date_creation)),
-            $user->dernier_acces ? date('d/m/Y H:i', strtotime($user->dernier_acces)) : 'Jamais'
-        ];
+    /**
+     * Export Excel de la liste des utilisateurs
+     */
+    public function exportExcelAction() {
+        $utilisateurs = $this->utilisateurModel->getAllWithRoles();
+        
+        $headers = ['ID', 'Nom', 'Prénom', 'Email', 'Rôle', 'Date création', 'Dernier accès'];
+        $data = [];
+        foreach ($utilisateurs as $user) {
+            $data[] = [
+                $user->id,
+                $user->nom,
+                $user->prenom ?? '',
+                $user->email,
+                $user->role,
+                date('d/m/Y H:i', strtotime($user->date_creation)),
+                $user->dernier_acces ? date('d/m/Y H:i', strtotime($user->dernier_acces)) : 'Jamais'
+            ];
+        }
+        
+        $excel = new ExcelExportService();
+        $excel->export($data, $headers, 'utilisateurs_' . date('Y-m-d'), 'Liste des utilisateurs');
     }
-    
-    $excel = new ExcelExportService();
-    $excel->export($data, $headers, 'utilisateurs_' . date('Y-m-d'), 'Liste des utilisateurs');
-}
 }

@@ -7,14 +7,18 @@ use App\Models\OeuvreModel;
 use App\Services\PdfExportService;
 use App\Middlewares\AuthMiddleware;
 use App\Services\ExcelExportService;
+use App\Services\AuditService;
+use App\Middlewares\SessionMiddleware;
 
 class RestaurationController extends Controller {
     private $restaurationModel;
     private $oeuvreModel;
 
     public function __construct() {
+        SessionMiddleware::check();
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('auth/login');
+            exit;
         }
         AuthMiddleware::requireAdminOrConservateur();
         $this->restaurationModel = new RestaurationModel();
@@ -25,14 +29,12 @@ class RestaurationController extends Controller {
      * Liste des restaurations avec recherche et filtres
      */
     public function indexAction() {
-        // Récupérer les filtres
         $keyword = $_GET['keyword'] ?? '';
         $oeuvre_id = $_GET['oeuvre_id'] ?? '';
         $statut = $_GET['statut'] ?? '';
         $date_debut = $_GET['date_debut'] ?? '';
         $date_fin = $_GET['date_fin'] ?? '';
         
-        // Construire la requête avec filtres
         $restaurations = $this->restaurationModel->getWithFilters([
             'keyword' => $keyword,
             'oeuvre_id' => $oeuvre_id,
@@ -41,7 +43,6 @@ class RestaurationController extends Controller {
             'date_fin' => $date_fin
         ]);
         
-        // Récupérer les données pour les filtres
         $oeuvres = $this->oeuvreModel->getAll();
         $statuts = ['en cours', 'terminée'];
         
@@ -74,7 +75,8 @@ class RestaurationController extends Controller {
      */
     public function storeAction() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('restauration/create');
+            $this->redirect('admin/restauration/create');
+            return;
         }
 
         $data = [
@@ -86,7 +88,6 @@ class RestaurationController extends Controller {
             'cout' => !empty($_POST['cout']) ? str_replace(',', '.', $_POST['cout']) : null
         ];
 
-        // Validation
         if (empty($data['oeuvre_id']) || empty($data['date_debut'])) {
             $oeuvres = $this->oeuvreModel->getAll();
             $this->render('create', [
@@ -98,7 +99,6 @@ class RestaurationController extends Controller {
             return;
         }
 
-        // Vérifier si la date de fin est après la date de début
         if ($data['date_fin'] && $data['date_fin'] < $data['date_debut']) {
             $oeuvres = $this->oeuvreModel->getAll();
             $this->render('create', [
@@ -110,7 +110,6 @@ class RestaurationController extends Controller {
             return;
         }
 
-        // Vérifier si l'œuvre est déjà en restauration
         $restaurationExistante = $this->restaurationModel->findActiveRestaurationByOeuvre($data['oeuvre_id']);
         if ($restaurationExistante) {
             $oeuvres = $this->oeuvreModel->getAll();
@@ -123,9 +122,16 @@ class RestaurationController extends Controller {
             return;
         }
 
-        $this->restaurationModel->insert($data);
+        // 1. Insertion
+        $id = $this->restaurationModel->insert($data);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('INSERT', 'restauration', $id, null, $data);
+
+        // 3. Redirection
         $_SESSION['success'] = "La restauration a été ajoutée avec succès !";
-        $this->redirect('restauration/index');
+        $this->redirect('admin/restauration/index');
     }
 
     /**
@@ -134,7 +140,8 @@ class RestaurationController extends Controller {
     public function editAction($id) {
         $restauration = $this->restaurationModel->getById($id);
         if (!$restauration) {
-            $this->redirect('restauration/index');
+            $this->redirect('admin/restauration/index');
+            return;
         }
         $oeuvres = $this->oeuvreModel->getAll();
         $this->render('edit', [
@@ -149,7 +156,15 @@ class RestaurationController extends Controller {
      */
     public function updateAction($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('restauration/edit/' . $id);
+            $this->redirect('admin/restauration/edit/' . $id);
+            return;
+        }
+
+        // Récupérer les anciennes valeurs pour l'audit
+        $old = $this->restaurationModel->getById($id);
+        if (!$old) {
+            $this->redirect('admin/restauration/index');
+            return;
         }
 
         $data = [
@@ -163,38 +178,61 @@ class RestaurationController extends Controller {
 
         if (empty($data['oeuvre_id']) || empty($data['date_debut'])) {
             $_SESSION['error'] = 'L\'œuvre et la date de début sont obligatoires';
-            $this->redirect('restauration/edit/' . $id);
+            $this->redirect('admin/restauration/edit/' . $id);
             return;
         }
 
         if ($data['date_fin'] && $data['date_fin'] < $data['date_debut']) {
             $_SESSION['error'] = 'La date de fin doit être postérieure à la date de début';
-            $this->redirect('restauration/edit/' . $id);
+            $this->redirect('admin/restauration/edit/' . $id);
             return;
         }
 
-        // Vérifier si l'œuvre est déjà en restauration (sauf pour cette restauration)
         $restaurationExistante = $this->restaurationModel->findActiveRestaurationByOeuvre($data['oeuvre_id']);
         if ($restaurationExistante && $restaurationExistante->id != $id) {
             $_SESSION['error'] = 'Cette œuvre est déjà en restauration (ID: ' . $restaurationExistante->id . ')';
-            $this->redirect('restauration/edit/' . $id);
+            $this->redirect('admin/restauration/edit/' . $id);
             return;
         }
 
+        // 1. Mise à jour
         $this->restaurationModel->update($id, $data);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('UPDATE', 'restauration', $id, (array)$old, $data);
+
+        // 3. Redirection
         $_SESSION['success'] = "La restauration a été modifiée avec succès !";
-        $this->redirect('restauration/index');
+        $this->redirect('admin/restauration/index');
     }
 
     /**
-     * Supprimer une restauration
+     * Supprimer une restauration (soft delete)
      */
     public function deleteAction($id) {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->restaurationModel->delete($id);
-            $_SESSION['success'] = "La restauration a été supprimée avec succès !";
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/restauration/index');
+            return;
         }
-        $this->redirect('restauration/index');
+
+        // Récupérer les anciennes valeurs pour l'audit
+        $old = $this->restaurationModel->getById($id);
+        if (!$old) {
+            $this->redirect('admin/restauration/index');
+            return;
+        }
+
+        // 1. Soft delete
+        $this->restaurationModel->delete($id);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('DELETE', 'restauration', $id, (array)$old, null);
+
+        // 3. Redirection
+        $_SESSION['success'] = "La restauration a été supprimée avec succès !";
+        $this->redirect('admin/restauration/index');
     }
 
     /**
@@ -203,7 +241,8 @@ class RestaurationController extends Controller {
     public function showAction($id) {
         $restauration = $this->restaurationModel->getWithOeuvre($id);
         if (!$restauration) {
-            $this->redirect('restauration/index');
+            $this->redirect('admin/restauration/index');
+            return;
         }
         $this->render('show', [
             'restauration' => $restauration,
@@ -212,14 +251,31 @@ class RestaurationController extends Controller {
     }
 
     /**
-     * Terminer une restauration (la marquer comme terminée)
+     * Terminer une restauration (marquer comme terminée)
      */
     public function completeAction($id) {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->restaurationModel->terminerRestauration($id);
-            $_SESSION['success'] = "La restauration a été marquée comme terminée !";
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/restauration/index');
+            return;
         }
-        $this->redirect('restauration/index');
+
+        // Récupérer les anciennes données pour l'audit
+        $old = $this->restaurationModel->getById($id);
+        if (!$old) {
+            $this->redirect('admin/restauration/index');
+            return;
+        }
+
+        // 1. Marquer comme terminée
+        $this->restaurationModel->terminerRestauration($id);
+
+        // 2. Audit
+        $audit = new AuditService();
+        $audit->log('UPDATE', 'restauration', $id, (array)$old, ['date_fin' => date('Y-m-d')]);
+
+        // 3. Redirection
+        $_SESSION['success'] = "La restauration a été marquée comme terminée !";
+        $this->redirect('admin/restauration/index');
     }
 
     /**
@@ -237,12 +293,11 @@ class RestaurationController extends Controller {
     }
 
     /**
-     * Export PDF de la liste des restaurations
+     * Export PDF
      */
     public function exportPdfAction() {
         $restaurations = $this->restaurationModel->getAll();
         
-        // Générer le HTML pour le PDF
         $html = '<h1 style="text-align:center; color:#1a2a3a;">Liste des Restaurations</h1>';
         $html .= '<p style="text-align:center; color:#888;">Généré le ' . date('d/m/Y H:i') . '</p>';
         $html .= '<hr>';
@@ -258,7 +313,6 @@ class RestaurationController extends Controller {
                     </tr>
                   </thead><tbody>';
         foreach ($restaurations as $restauration) {
-            // Récupérer le titre de l'œuvre
             $oeuvre = $this->oeuvreModel->getById($restauration->oeuvre_id);
             $html .= '<tr>
                         <td>' . $restauration->id . '</td>
@@ -275,27 +329,28 @@ class RestaurationController extends Controller {
         $pdfService->generateFromHtml($html, 'liste_restaurations', 'landscape');
     }
 
-  
-
-public function exportExcelAction() {
-    $restaurations = $this->restaurationModel->getAll();
-    
-    $headers = ['ID', 'Œuvre', 'Responsable', 'Date début', 'Date fin', 'Coût (€)', 'Description'];
-    $data = [];
-    foreach ($restaurations as $restauration) {
-        $oeuvre = $this->oeuvreModel->getById($restauration->oeuvre_id);
-        $data[] = [
-            $restauration->id,
-            $oeuvre->titre ?? 'Non trouvée',
-            $restauration->responsable ?? '',
-            date('d/m/Y', strtotime($restauration->date_debut)),
-            $restauration->date_fin ? date('d/m/Y', strtotime($restauration->date_fin)) : 'En cours',
-            number_format($restauration->cout ?? 0, 2),
-            $restauration->description ?? ''
-        ];
+    /**
+     * Export Excel
+     */
+    public function exportExcelAction() {
+        $restaurations = $this->restaurationModel->getAll();
+        
+        $headers = ['ID', 'Œuvre', 'Responsable', 'Date début', 'Date fin', 'Coût (€)', 'Description'];
+        $data = [];
+        foreach ($restaurations as $restauration) {
+            $oeuvre = $this->oeuvreModel->getById($restauration->oeuvre_id);
+            $data[] = [
+                $restauration->id,
+                $oeuvre->titre ?? 'Non trouvée',
+                $restauration->responsable ?? '',
+                date('d/m/Y', strtotime($restauration->date_debut)),
+                $restauration->date_fin ? date('d/m/Y', strtotime($restauration->date_fin)) : 'En cours',
+                number_format($restauration->cout ?? 0, 2),
+                $restauration->description ?? ''
+            ];
+        }
+        
+        $excel = new ExcelExportService();
+        $excel->export($data, $headers, 'restaurations_' . date('Y-m-d'), 'Liste des restaurations');
     }
-    
-    $excel = new ExcelExportService();
-    $excel->export($data, $headers, 'restaurations_' . date('Y-m-d'), 'Liste des restaurations');
-}
 }

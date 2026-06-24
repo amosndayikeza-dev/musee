@@ -1,7 +1,8 @@
 <?php
 namespace App\Services;
 
-use App\core\Database;
+use App\Core\Database;
+
 class BackupService {
     
     private $backupDir;

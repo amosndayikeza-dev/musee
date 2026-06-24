@@ -78,6 +78,12 @@
                                 <a href="<?= BASE_URL ?>admin/categorie/edit/<?= $categorie->id ?>" class="btn-icon edit" title="Modifier">
                                     <i class="fas fa-edit"></i>
                                 </a>
+
+                                  <!-- ========== BOUTON AUDIT ========== -->
+                                <a href="<?= BASE_URL ?>admin/audit?table=categorie&record_id=<?= $categorie->id ?>" class="btn-icon" title="Voir l'historique" style="color: #6c757d;">
+                                    <i class="fas fa-history"></i>
+                                </a>
+                                <!-- ================================== -->
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
                                     <form method="post" action="<?= BASE_URL ?>admin/categorie/delete/<?= $categorie->id ?>" style="display:inline;">
                                         <button type="submit" class="btn-icon delete" onclick="return confirm('Supprimer cette catégorie ?')" title="Supprimer">

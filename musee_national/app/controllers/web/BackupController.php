@@ -28,6 +28,11 @@ class BackupController extends Controller {
      * Crée une sauvegarde
      */
     public function createAction() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/backup');
+            return;
+        }
+        
         $backupService = new BackupService();
         $filename = $backupService->createBackup();
         
@@ -37,7 +42,7 @@ class BackupController extends Controller {
             $_SESSION['error'] = 'Erreur lors de la création de la sauvegarde';
         }
         
-        $this->redirect('backup/index');
+        $this->redirect('admin/backup');
     }
 
     /**
@@ -45,14 +50,14 @@ class BackupController extends Controller {
      */
     public function restoreAction() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('backup/index');
+            $this->redirect('admin/backup');
             return;
         }
         
         $filename = $_POST['filename'] ?? '';
         if (empty($filename)) {
             $_SESSION['error'] = 'Aucun fichier sélectionné';
-            $this->redirect('backup/index');
+            $this->redirect('admin/backup');
             return;
         }
         
@@ -65,7 +70,7 @@ class BackupController extends Controller {
             $_SESSION['error'] = 'Erreur lors de la restauration';
         }
         
-        $this->redirect('backup/index');
+        $this->redirect('admin/backup');
     }
 
     /**
@@ -73,14 +78,14 @@ class BackupController extends Controller {
      */
     public function deleteAction() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('backup/index');
+            $this->redirect('admin/backup');
             return;
         }
         
         $filename = $_POST['filename'] ?? '';
         if (empty($filename)) {
             $_SESSION['error'] = 'Aucun fichier sélectionné';
-            $this->redirect('backup/index');
+            $this->redirect('admin/backup');
             return;
         }
         
@@ -93,6 +98,6 @@ class BackupController extends Controller {
             $_SESSION['error'] = 'Erreur lors de la suppression';
         }
         
-        $this->redirect('backup/index');
+        $this->redirect('admin/backup');
     }
 }

@@ -2,8 +2,10 @@
 namespace App\Models;
 
 use App\Core\Model;
+use App\Core\SoftDeleteTrait; 
 
 class RestaurationModel extends Model {
+    use SoftDeleteTrait;
     protected $table = 'restauration';
 
     /**

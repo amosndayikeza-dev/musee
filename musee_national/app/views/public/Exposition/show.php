@@ -1,7 +1,17 @@
 <div class="container">
     <div style="background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+            <!-- Colonne gauche : image + informations -->
             <div>
+                <!-- Image de l'exposition -->
+                <?php if (!empty($exposition->photo)): ?>
+                    <img src="<?= BASE_URL . $exposition->photo ?>" alt="<?= htmlspecialchars($exposition->titre) ?>" style="width:100%; border-radius:8px; margin-bottom:20px;">
+                <?php else: ?>
+                    <div style="background:#e9ecef; height:200px; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:60px; color:#999; margin-bottom:20px;">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                <?php endif; ?>
+
                 <span class="badge badge-<?= $exposition->statut === 'en cours' ? 'en-cours' : ($exposition->statut === 'prévue' ? 'prévue' : 'terminée') ?>" style="margin-bottom: 15px;">
                     <?= $exposition->statut ?>
                 </span>
@@ -26,6 +36,8 @@
                     <p style="line-height: 1.8;"><?= nl2br(htmlspecialchars($exposition->description ?? 'Aucune description disponible')) ?></p>
                 </div>
             </div>
+
+            <!-- Colonne droite : œuvres exposées -->
             <div>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
                     <h3 style="color: #1a2a3a; margin-bottom: 15px;">

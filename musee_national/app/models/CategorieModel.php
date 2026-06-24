@@ -2,8 +2,12 @@
 namespace App\Models;
 
 use App\Core\Model;
+use App\Core\SoftDeleteTrait;
 
 class CategorieModel extends Model {
+    
+    use SoftDeleteTrait;
+    
     protected $table = 'categorie';
 
     /**
@@ -61,49 +65,49 @@ class CategorieModel extends Model {
     }
 
     /**
- * Récupère les catégories avec filtres et pagination
- */
-public function getWithFiltersPaginated($filters = [], $limit = 10, $offset = 0) {
-    $sql = "SELECT c.*, COUNT(o.id) as nb_oeuvres 
-            FROM categorie c
-            LEFT JOIN oeuvre o ON c.id = o.categorie_id
-            WHERE 1=1";
-    $params = [];
-    
-    if (!empty($filters['keyword'])) {
-        $sql .= " AND (c.nom LIKE :keyword OR c.description LIKE :keyword)";
-        $params[':keyword'] = '%' . $filters['keyword'] . '%';
+     * Récupère les catégories avec filtres et pagination
+     */
+    public function getWithFiltersPaginated($filters = [], $limit = 10, $offset = 0) {
+        $sql = "SELECT c.*, COUNT(o.id) as nb_oeuvres 
+                FROM categorie c
+                LEFT JOIN oeuvre o ON c.id = o.categorie_id
+                WHERE 1=1";
+        $params = [];
+        
+        if (!empty($filters['keyword'])) {
+            $sql .= " AND (c.nom LIKE :keyword OR c.description LIKE :keyword)";
+            $params[':keyword'] = '%' . $filters['keyword'] . '%';
+        }
+        
+        $sql .= " GROUP BY c.id ORDER BY c.nom ASC LIMIT :limit OFFSET :offset";
+        
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue(':limit', (int)$limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
     }
-    
-    $sql .= " GROUP BY c.id ORDER BY c.nom ASC LIMIT :limit OFFSET :offset";
-    
-    $stmt = $this->db->prepare($sql);
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value);
-    }
-    $stmt->bindValue(':limit', (int)$limit, \PDO::PARAM_INT);
-    $stmt->bindValue(':offset', (int)$offset, \PDO::PARAM_INT);
-    $stmt->execute();
-    return $stmt->fetchAll();
-}
 
-/**
- * Compte le nombre de catégories avec filtres
- */
-public function countWithFilters($filters = []) {
-    $sql = "SELECT COUNT(*) as total FROM categorie WHERE 1=1";
-    $params = [];
-    
-    if (!empty($filters['keyword'])) {
-        $sql .= " AND (nom LIKE :keyword OR description LIKE :keyword)";
-        $params[':keyword'] = '%' . $filters['keyword'] . '%';
+    /**
+     * Compte le nombre de catégories avec filtres
+     */
+    public function countWithFilters($filters = []) {
+        $sql = "SELECT COUNT(*) as total FROM categorie WHERE 1=1";
+        $params = [];
+        
+        if (!empty($filters['keyword'])) {
+            $sql .= " AND (nom LIKE :keyword OR description LIKE :keyword)";
+            $params[':keyword'] = '%' . $filters['keyword'] . '%';
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+        return $stmt->fetch()->total ?? 0;
     }
-    
-    $stmt = $this->db->prepare($sql);
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value);
-    }
-    $stmt->execute();
-    return $stmt->fetch()->total ?? 0;
-}
 }
