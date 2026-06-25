@@ -41,6 +41,10 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
             'Composer\\Pcre\\' => 14,
             'Complex\\' => 8,
         ),
+        'A' =>
+        array (
+            'App\\' => 4,
+        ),
     );
 
     public static $prefixDirsPsr4 = array (
@@ -95,6 +99,10 @@ class ComposerStaticInit20fad51902f91e7fd3039e016a6556b5
         'Complex\\' =>
         array (
             0 => __DIR__ . '/..' . '/markbaker/complex/classes/src',
+        ),
+        'App\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/app',
         ),
     );
 
